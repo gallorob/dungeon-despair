@@ -1,0 +1,21 @@
+rng_seed: 1234
+
+screen_width: 1280
+screen_height: 720
+
+left_panel_percentage: 0.725
+topleft_preview_percentage: 0.7
+
+max_enemies_per_encounter: 4
+max_treasures_per_encounter: 1
+max_traps_per_encounter: 1
+corridor_min_length: 2
+corridor_max_length: 4
+
+entity_scale: 0.35
+minimap_room_scale: 0.15
+minimap_corridor_scale: 0.075
+
+selected_color: '#ffbf00'
+unselected_color: '#b38600'
+
