@@ -1,27 +1,15 @@
-from typing import List, Optional
+import os
+from typing import List, Optional, Union
 
 import pygame
 from pygame import Rect
 from pygame_gui.core.interfaces import IUIManagerInterface
 from pygame_gui.elements import UIImage, UILabel, UIWindow
-from PIL import Image
 
 from configs import configs
-from heroes_party import Hero, HeroParty
-from level import Encounter, Enemy, Room
-from utils import img_to_pygame_sprite, rich_entity_description
-
-
-def scale_and_get_offsets(image, rect):
-	image_w, image_h = image.get_width(), image.get_height()
-	scale_w = rect.width / image_w
-	scale_h = rect.height / image_h
-	scale_factor = min(scale_w, scale_h)
-	new_width, new_height = int(scale_factor * image_w), int(scale_factor * image_h)
-	scaled_image = pygame.transform.scale(image, (new_width, new_height))
-	dw, dh = (rect.width - new_width) / 2, (rect.height - new_height) / 2
-	
-	return scaled_image, dw, dh
+from heroes_party import HeroParty
+from level import Corridor, Encounter, Room
+from utils import rich_entity_description
 
 
 class EncounterPreview(UIWindow):
@@ -32,7 +20,7 @@ class EncounterPreview(UIWindow):
 		self.padding = self.get_container().rect.width / 10
 		
 		self.stress_level: Optional[UILabel] = None
-		self.room_image: Optional[UIImage] = None
+		self.background_image: Optional[UIImage] = None
 		self.enemies: List[UIImage] = []
 		self.heroes: List[UIImage] = []
 	
@@ -47,53 +35,72 @@ class EncounterPreview(UIWindow):
 			self.stress_level.text = f'Current Stress: {stress}'
 			self.stress_level.rebuild()
 	
-	def display_room(self, room: Room):
-		# if self.room_image:
-		# 	self.room_image.kill()
-		# self.room_image = None
-		room_image = pygame.image.load(room.sprite)
-		room_image, dw, dh = scale_and_get_offsets(room_image, self.get_container().rect)
+	def display_corridor_background(self, corridor: Corridor, idx: int):
+		if self.background_image:
+			self.background_image.kill()
+		self.background_image = None
+		area_image = pygame.image.load(os.path.join(configs.assets, 'dungeon_assets', corridor.sprite))
 		
-		if self.room_image is None:
-			room_rect = Rect(dw, dh,
-			                 self.get_container().rect.width - 2 * dw,
-			                 self.get_container().rect.height - 2 * dh)
-			
-			self.room_image = UIImage(relative_rect=room_rect,
-			                          image_surface=room_image,
-			                          manager=self.ui_manager,
-			                          container=self.get_container(),
-			                          anchors={'left':   'left',
-			                                   'right':  'right',
-			                                   'top':    'top',
-			                                   'bottom': 'bottom'
-			                                   },
-			                          starting_height=self.starting_height
-			                          )
+		scale_factor = self.get_container().rect.height / area_image.get_height()
+		new_width, new_height = int(scale_factor * area_image.get_width()), int(scale_factor * area_image.get_height())
+		encounter_w = scale_factor * (area_image.get_width() / (corridor.length + 2))
+		area_image = pygame.transform.scale(area_image, (new_width, new_height))
 		
-		else:
-			self.room_image.set_image(room_image)
+		diff_w = self.get_container().rect.width - encounter_w
+		area_image = area_image.subsurface(Rect(((idx + 1) * encounter_w) - (diff_w / 2), 0,
+		                                        encounter_w + diff_w, area_image.get_height()))
+		
+		corridor_rect = Rect(0, 0,
+		                     self.get_container().rect.width,
+		                     self.get_container().rect.height)
+		
+		self.background_image = UIImage(relative_rect=corridor_rect,
+		                                image_surface=area_image,
+		                                manager=self.ui_manager,
+		                                container=self.get_container(),
+		                                starting_height=self.starting_height
+		                                )
 	
+	def display_room_background(self, room: Room):
+		if self.background_image:
+			self.background_image.kill()
+		self.background_image = None
+		area_image = pygame.image.load(os.path.join(configs.assets, 'dungeon_assets', room.sprite))
+		scale_factor = min(self.get_container().rect.width / area_image.get_width(),
+		                   self.get_container().rect.height / area_image.get_height())
+		area_image = pygame.transform.scale(area_image, (int(scale_factor * area_image.get_width()),
+		                                                 int(scale_factor * area_image.get_height())))
+		dw, dh = ((self.get_container().rect.width - area_image.get_width()) / 2,
+		          (self.get_container().rect.height - area_image.get_height()) / 2)
+		room_rect = Rect(dw, dh,
+		                 self.get_container().rect.width - dw,
+		                 self.get_container().rect.height - dh)
+		
+		self.background_image = UIImage(relative_rect=room_rect,
+		                                image_surface=area_image,
+		                                manager=self.ui_manager,
+		                                container=self.get_container(),
+		                                starting_height=self.starting_height
+		                                )
+		
 	def display_encounter(self, encounter: Encounter):
 		for enemy in self.enemies:
 			enemy.kill()
 		self.enemies = []
 
 		# show enemies
-		x_offset = self.room_image.rect.width / 2
-		y_offset = self.room_image.rect.height / 2
+		x_offset = self.background_image.rect.width / 2
+		y_offset = self.background_image.rect.height / 2
 		enemies_width = (x_offset - self.padding) / configs.max_enemies_per_encounter
 		cum_padding = self.padding
 		for i, enemy in enumerate(encounter.entities.get('enemy', [])):
-			enemy_image = pygame.image.load(enemy.sprite)
-			# content_rect = enemy_image.get_bounding_rect()
-			# enemy_image = enemy_image.subsurface(content_rect)
+			enemy_image = pygame.image.load(os.path.join(configs.assets, 'dungeon_assets', enemy.sprite))
 			r = enemies_width / enemy_image.get_width()
 			enemy_sprite = UIImage(
 				relative_rect=Rect(
-					x_offset + cum_padding,  # x_offset + self.padding + i * enemies_width,
+					x_offset + cum_padding,
 					y_offset - r * enemy_image.get_height(),
-					enemies_width,  # r * enemy_image.get_width(),
+					enemies_width,
 					r * enemy_image.get_height()
 				),
 				image_surface=enemy_image, manager=self.ui_manager, container=self.get_container(),
@@ -102,7 +109,7 @@ class EncounterPreview(UIWindow):
 				}, starting_height=self.starting_height + 1
 			)
 			enemy_sprite.set_tooltip(rich_entity_description(enemy))
-			cum_padding += enemies_width  # r * enemy_image.get_width()
+			cum_padding += enemies_width
 			self.enemies.append(enemy_sprite)
 	
 	def display_heroes(self, heroes: HeroParty):
@@ -110,21 +117,18 @@ class EncounterPreview(UIWindow):
 			hero.kill()
 		self.heroes = []
 		
-		x_offset = self.room_image.rect.width / 2
-		y_offset = self.room_image.rect.height / 2
+		x_offset = self.background_image.rect.width / 2
+		y_offset = self.background_image.rect.height / 2
 		min_width = (x_offset - self.padding) / 4
 		cum_padding = self.padding
 		for i, hero in enumerate(heroes.party):
-			# print(hero.name, cum_padding, x_offset - cum_padding)
 			hero_image = pygame.image.load(hero.sprite)
-			# content_rect = hero_image.get_bounding_rect()
-			# hero_image = hero_image.subsurface(content_rect)
 			r = min_width / hero_image.get_width()
 			hero_sprite = UIImage(
 				relative_rect=Rect(
-					x_offset - cum_padding,#self.padding + i * min_width,
+					x_offset - cum_padding,
 					y_offset - r * hero_image.get_height(),
-					min_width,#r * hero_image.get_width(),
+					min_width,
 					r * hero_image.get_height()
 				),
 				image_surface=hero_image, manager=self.ui_manager, container=self.get_container(),
@@ -133,7 +137,7 @@ class EncounterPreview(UIWindow):
 				}, starting_height=self.starting_height + 1
 			)
 			hero_sprite.set_tooltip(rich_entity_description(hero))
-			cum_padding += min_width#r * hero_image.get_width()
+			cum_padding += min_width
 			self.heroes.append(hero_sprite)
 			
 	def update(self, time_delta: float):

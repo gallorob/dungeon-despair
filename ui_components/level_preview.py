@@ -20,7 +20,8 @@ class LevelPreview(UIWindow):
 		self.allow_movement = True
 		
 		self.map: List[UIButton] = []
-		self._map_rooms: Dict[UIButton, Union[Corridor, Room]] = {}
+		self._map_areas: Dict[UIButton, Union[Corridor, Room]] = {}
+		self._map_idxs: Dict[UIButton, int] = {}
 	
 	def get_encounter_text(self, encounter: Encounter):
 		enemies_text = f'x{len(encounter.entities["enemy"])}' if len(encounter.entities["enemy"]) > 0 else '0'
@@ -28,7 +29,7 @@ class LevelPreview(UIWindow):
 		return f'{enemies_text}{treasure_text}'
 	
 	def update_button_text(self, encounter: Encounter, roomcorridor_name: str):
-		for button, room in self._map_rooms.items():
+		for button, room in self._map_areas.items():
 			if room.name == roomcorridor_name:
 				button.text = self.get_encounter_text(encounter)
 				button.rebuild()
@@ -80,7 +81,7 @@ class LevelPreview(UIWindow):
 					manager=self.ui_manager,
 				)
 				self.map.append(room_button)
-				self._map_rooms[room_button] = game_data.rooms[current_room]
+				self._map_areas[room_button] = game_data.rooms[current_room]
 				
 				for direction, adjacent_room in game_data.level_geometry[current_room].items():
 					dx, dy = (room_button_size[0] - (room_button_size[0] // 2) if direction == 'RIGHT' else 0,
@@ -88,7 +89,7 @@ class LevelPreview(UIWindow):
 					if adjacent_room and adjacent_room not in room_positions:
 						# Draw corridor
 						for corridor in game_data.corridors:
-							room_from, room_to = corridor.room_from.name, corridor.room_to.name
+							room_from, room_to = corridor.room_from, corridor.room_to
 							if (room_from == current_room or room_from == adjacent_room) and (
 								room_to == current_room or room_to == adjacent_room):
 								length = corridor.length
@@ -96,7 +97,6 @@ class LevelPreview(UIWindow):
 									dx += offsets_directions[direction][0] * corridor_button_size[0]
 									dy += offsets_directions[direction][1] * corridor_button_size[1]
 									corridor_button = pygame_gui.elements.UIButton(
-										# object_id=f'{room_from}_{room_to}_{i}',
 										relative_rect=pygame.Rect((current_pos[0] + dx + correcting_directions[direction][0] * corridor_room_difference[0],
 										                           current_pos[1] + dy + correcting_directions[direction][1] * corridor_room_difference[1]),
 										                          corridor_button_size),
@@ -107,7 +107,8 @@ class LevelPreview(UIWindow):
 									)
 									# corridor_button.
 									self.map.append(corridor_button)
-									self._map_rooms[corridor_button] = corridor
+									self._map_areas[corridor_button] = corridor
+									self._map_idxs[corridor_button] = i
 								continue
 						# Calculate position of the adjacent room
 						ddx, ddy = (-room_button_size[0] / 2 if direction == 'RIGHT' else 0,
@@ -126,19 +127,16 @@ class LevelPreview(UIWindow):
 		if self.allow_movement:
 			for encounter in self.map:
 				if encounter.rect.collidepoint(pos):
-					return self._map_rooms[encounter].name
-		return None
+					return self._map_areas[encounter].name, self._map_idxs.get(encounter, -1)
+		return None, -1
 	
 	def shift_minimap(self, clicked_room_name):
 		dx, dy = 0, 0
 		for encounter in self.map:
-			# TEMPORARY
-			# TODO: Does not differentiate between rooms and corridors
-			target_encounter = self._map_rooms[encounter]
-			if hasattr(target_encounter, 'name'):
-				if target_encounter.name == clicked_room_name:
-					dx, dy = encounter.get_relative_rect().x, encounter.get_relative_rect().y
-					break
+			target_encounter = self._map_areas[encounter]
+			if target_encounter.name == clicked_room_name:
+				dx, dy = encounter.get_relative_rect().x, encounter.get_relative_rect().y
+				break
 		offset_x, offset_y = self.get_container().get_relative_rect().width // 2 - dx, self.get_container().get_relative_rect().height // 2 - dy
 		for encounter in self.map:
 			encounter.rect.move_ip(offset_x, offset_y)

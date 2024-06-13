@@ -19,3 +19,4 @@ minimap_corridor_scale: 0.075
 selected_color: '#ffbf00'
 unselected_color: '#b38600'
 
+assets: './assets'
