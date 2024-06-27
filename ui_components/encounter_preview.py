@@ -8,7 +8,7 @@ from pygame_gui.elements import UIImage, UILabel, UIWindow
 
 from configs import configs
 from heroes_party import HeroParty
-from level import Corridor, Encounter, Room
+from level import Corridor, Encounter, Entity, Room
 from utils import rich_entity_description
 
 
@@ -23,6 +23,8 @@ class EncounterPreview(UIWindow):
 		self.background_image: Optional[UIImage] = None
 		self.enemies: List[UIImage] = []
 		self.heroes: List[UIImage] = []
+		self.attacking: Optional[UIImage] = None
+		self.targeted: List[UIImage] = []
 	
 	def display_stress_level(self, stress: int):
 		if self.stress_level is None:
@@ -106,7 +108,7 @@ class EncounterPreview(UIWindow):
 				image_surface=enemy_image, manager=self.ui_manager, container=self.get_container(),
 				parent_element=self, anchors={
 					'centery': 'centery'
-				}, starting_height=self.starting_height + 1
+				}, starting_height=self.starting_height + 2
 			)
 			enemy_sprite.set_tooltip(rich_entity_description(enemy))
 			cum_padding += enemies_width
@@ -134,11 +136,29 @@ class EncounterPreview(UIWindow):
 				image_surface=hero_image, manager=self.ui_manager, container=self.get_container(),
 				parent_element=self, anchors={
 					'centery': 'centery'
-				}, starting_height=self.starting_height + 1
+				}, starting_height=self.starting_height + 2
 			)
 			hero_sprite.set_tooltip(rich_entity_description(hero))
 			cum_padding += min_width
 			self.heroes.append(hero_sprite)
-			
+	
+	def update_attacking(self, idx: int):
+		if self.attacking is not None:
+			self.attacking.kill()
+		
+		ref_sprite = [*self.heroes, *self.enemies][idx]
+		self.attacking = UIImage(
+			relative_rect=Rect(
+				ref_sprite.relative_rect.x + ref_sprite.relative_rect.width / 2 - self.padding / 4,
+				0,
+				self.padding / 2, self.padding / 2),
+			image_surface=pygame.image.load('assets/attacking_icon.png'),
+			manager=self.ui_manager, container=self.get_container(),
+			parent_element=self, anchors={
+				'centery': 'centery'
+				}, starting_height=self.starting_height + 1
+			)
+		
+	
 	def update(self, time_delta: float):
 		super().update(time_delta)

@@ -26,7 +26,7 @@ pygame.init()
 # Initialize the screen
 screen = pygame.display.set_mode((configs.screen_width, configs.screen_height))
 pygame.display.set_caption("Dungeon Despair")
-pygame.display.set_icon(pygame.image.load('./assets/llmaker_logo.png'))
+pygame.display.set_icon(pygame.image.load('./assets/dungeon_despair_logo.png'))
 
 # Create the UI manager
 ui_manager = pygame_gui.UIManager((screen.get_width(), screen.get_height()))
@@ -59,6 +59,11 @@ combat_window = ActionWindow(
 	pygame.Rect(room_preview_width, level_minimap_height, combat_window_width, combat_window_height), ui_manager)
 
 game_engine: Optional[GameEngine] = None
+
+level_preview.hide()
+encounter_preview.hide()
+combat_window.hide()
+events_history.hide()
 
 
 def show_level(level: Level):
@@ -107,8 +112,11 @@ def check_and_start_encounter(game_engine: GameEngine,
 		encounter_preview.display_encounter(game_engine.get_current_encounter())
 		combat_window.display_attacks(game_engine.get_attacks())
 		
+		encounter_preview.update_attacking(game_engine.get_attacker_idx())
+		
 		# TODO: Fix this patchwork :)
-		events_history.add_text_and_scroll(
+		# events_history.add_text_and_scroll(
+		messages.append(
 			f'Attacking: <b>{game_engine.combat_engine.currently_attacking(game_engine.heroes, game_engine.game_data).name}</b>')
 
 
@@ -138,6 +146,8 @@ def check_aftermath(game_engine: GameEngine,
 		combat_window.display_attacks(game_engine.get_attacks())
 		events_history.add_text_and_scroll(
 			f'Attacking: <b>{game_engine.combat_engine.currently_attacking(game_engine.heroes, game_engine.game_data).name}</b>')
+		
+		encounter_preview.update_attacking(game_engine.get_attacker_idx())
 	
 	encounter_preview.display_stress_level(game_engine.stress)
 
@@ -156,6 +166,10 @@ while running:
 		if event.type == pygame_gui.UI_FILE_DIALOG_PATH_PICKED and event.ui_element == file_dlg:
 			selected_file_path = event.text
 			level = load_level(selected_file_path)
+			level_preview.show()
+			encounter_preview.show()
+			combat_window.show()
+			events_history.show()
 			show_level(level)
 		
 		if event.type == pygame_gui.UI_WINDOW_CLOSE and event.ui_element == file_dlg:

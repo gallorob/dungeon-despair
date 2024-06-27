@@ -68,6 +68,10 @@ class GameEngine:
 	def get_attacks(self) -> List[Attack]:
 		return self.combat_engine.get_attacks(self.heroes, self.game_data)
 	
+	def get_attacker_idx(self) -> int:
+		entity = self.combat_engine.currently_attacking(self.heroes, self.game_data)
+		return self.combat_engine.get_entities(self.heroes, self.game_data).index(entity)
+	
 	def process_attack(self, attack_idx) -> List[str]:
 		attack_stress, attack_msgs = self.combat_engine.process_attack(self.heroes, self.game_data, attack_idx)
 		self.stress += attack_stress
