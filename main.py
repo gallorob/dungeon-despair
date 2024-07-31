@@ -133,6 +133,7 @@ def check_aftermath(game_engine: GameEngine,
 	encounter_preview.display_encounter(game_engine.get_current_encounter())
 	
 	combat_window.clear_attacks()
+	encounter_preview.update_targeted([])
 	
 	game_engine.check_end_encounter()
 	if game_engine.state == GameState.IDLE:
@@ -213,6 +214,12 @@ while running:
 						                encounter_preview=encounter_preview,
 						                events_history=events_history,
 						                combat_window=combat_window)
+						
+						if game_engine.state == GameState.IN_COMBAT:
+							attack_idx = combat_window.check_hovered_attack(event.pos)
+							if attack_idx is not None:
+								idxs = game_engine.get_targeted_idxs(attack_idx)
+								encounter_preview.update_targeted(idxs)
 				
 		elif event.type == pygame.MOUSEMOTION:
 			attack_idx = combat_window.check_hovered_attack(event.pos)
