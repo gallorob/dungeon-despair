@@ -213,6 +213,14 @@ while running:
 						                encounter_preview=encounter_preview,
 						                events_history=events_history,
 						                combat_window=combat_window)
+				
+		elif event.type == pygame.MOUSEMOTION:
+			attack_idx = combat_window.check_hovered_attack(event.pos)
+			if attack_idx is not None:
+				idxs = game_engine.get_targeted_idxs(attack_idx)
+				encounter_preview.update_targeted(idxs)
+			else:
+				encounter_preview.update_targeted([])
 		
 		while len(messages) > 0:
 			message = messages.pop(0)

@@ -47,3 +47,9 @@ class ActionWindow(UIWindow):
 			if attack.rect.collidepoint(pos):
 				return i
 		return None
+	
+	def check_hovered_attack(self, pos) -> Optional[int]:
+		for i, attack in enumerate(self.attacks):
+			if attack.rect.collidepoint(pos) and attack.is_enabled:
+				return i
+		return None

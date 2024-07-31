@@ -158,6 +158,25 @@ class EncounterPreview(UIWindow):
 				'centery': 'centery'
 				}, starting_height=self.starting_height + 1
 			)
+	
+	def update_targeted(self, idxs: List[int]):
+		if self.targeted:
+			for target in self.targeted:
+				target.kill()
+		
+		for idx in idxs:
+			ref_sprite = [*self.heroes, *self.enemies][idx]
+			self.targeted.append(UIImage(
+				relative_rect=Rect(
+					ref_sprite.relative_rect.x + ref_sprite.relative_rect.width / 2 - self.padding / 4,
+					0,
+					self.padding / 2, self.padding / 2),
+				image_surface=pygame.image.load('assets/targeting_icon.png'),
+				manager=self.ui_manager, container=self.get_container(),
+				parent_element=self, anchors={
+					'centery': 'centery'
+				}, starting_height=self.starting_height + 1
+			))
 		
 	
 	def update(self, time_delta: float):

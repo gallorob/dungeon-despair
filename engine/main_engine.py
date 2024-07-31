@@ -2,8 +2,8 @@ from enum import Enum, auto
 from typing import List, Optional
 
 from engine.combat_engine import CombatEngine
-from heroes_party import get_temp_heroes
-from level import Attack, Level, Room
+from heroes_party import get_temp_heroes, Hero
+from level import Attack, Level, Room, Enemy
 
 
 class GameState(Enum):
@@ -77,6 +77,17 @@ class GameEngine:
 		self.stress += attack_stress
 		return attack_msgs
 	
+	def get_targeted_idxs(self, attack_idx) -> List[int]:
+		positioned_entities = self.combat_engine.get_entities(self.heroes, self.game_data)
+		current_attacker = self.combat_engine.currently_attacking(self.heroes, self.game_data)
+		attack = current_attacker.attacks[attack_idx] if attack_idx < len(current_attacker.attacks) else self.combat_engine.pass_attack
+		attack_mask = self.combat_engine.convert_attack_mask(attack.target_positions)
+		if isinstance(current_attacker, Enemy):
+			attack_mask = list(reversed(attack_mask))
+		attack_offset = 0 if isinstance(current_attacker, Enemy) else len(self.heroes.party)
+		target_idxs = [i + attack_offset for i in range(min(len(attack_mask), len(positioned_entities) - attack_offset)) if attack_mask[i]]
+		return target_idxs
+		
 	def check_dead_entities(self):
 		dead_stress, dead_msgs = self.combat_engine.process_dead_entities(self.heroes, self.game_data)
 		self.stress += dead_stress

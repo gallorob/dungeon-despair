@@ -80,7 +80,7 @@ class CombatEngine:
 		positioned_entities = self.get_entities(heroes, game_data)
 		current_attacker = positioned_entities[self.sorted_entities[self.currently_active]]
 		attack = current_attacker.attacks[attack_idx] if attack_idx < len(current_attacker.attacks) else self.pass_attack
-		
+	
 		if attack == self.pass_attack:
 			attack_msgs.append(f'<b>{current_attacker.name}</b> passes!')
 			stress += 10 * (1 if isinstance(current_attacker, Hero) else -1)
