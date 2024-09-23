@@ -57,6 +57,13 @@
       "text_shadow_offset": "0,1"
     }
   },
+  "#current_room_button": {
+    "colours": {
+      "dark_bg": "#ffffff29",
+      "normal_bg": "#ffffff29",
+      "disabled_bg": "#ffffff29"
+    }
+  },
   "label": {
     "colours": {
       "normal_text": "#e65100",

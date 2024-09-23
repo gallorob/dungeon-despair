@@ -3,6 +3,7 @@ from typing import Dict, List, Union
 import pygame
 import pygame_gui
 from pygame import Rect
+from pygame_gui.core import ObjectID
 from pygame_gui.core.interfaces import IUIManagerInterface
 from pygame_gui.elements import UIButton, UIWindow
 
@@ -80,6 +81,11 @@ class LevelPreview(UIWindow):
 					container=self.get_container(),
 					manager=self.ui_manager,
 				)
+				
+				# Set the first room as current room
+				if current_room == game_data.current_room:
+					room_button.change_object_id(ObjectID(class_id='button', object_id='#current_room_button'))
+				
 				self.map.append(room_button)
 				self._map_areas[room_button] = game_data.rooms[current_room]
 				
@@ -103,9 +109,8 @@ class LevelPreview(UIWindow):
 										text='?',
 										tool_tip_text=f"{room_from} - {room_to} ({i})",
 										container=self.get_container(),
-										manager=self.ui_manager
+										manager=self.ui_manager,
 									)
-									# corridor_button.
 									self.map.append(corridor_button)
 									self._map_areas[corridor_button] = corridor
 									self._map_idxs[corridor_button] = i
@@ -130,11 +135,16 @@ class LevelPreview(UIWindow):
 					return self._map_areas[encounter].name, self._map_idxs.get(encounter, -1)
 		return None, -1
 	
-	def shift_minimap(self, clicked_room_name):
+	def update_minimap(self, clicked_room_name, encounter_idx):
+		# Remove custom theming
+		for encounter in self.map:
+			encounter.change_object_id(None)
+		# Shift the minimap
 		dx, dy = 0, 0
 		for encounter in self.map:
 			target_encounter = self._map_areas[encounter]
-			if target_encounter.name == clicked_room_name:
+			if target_encounter.name == clicked_room_name and encounter_idx == self._map_idxs.get(encounter, -1):
+				encounter.change_object_id(ObjectID(class_id='button', object_id='#current_room_button'))
 				dx, dy = encounter.get_relative_rect().x, encounter.get_relative_rect().y
 				break
 		offset_x, offset_y = self.get_container().get_relative_rect().width // 2 - dx, self.get_container().get_relative_rect().height // 2 - dy
@@ -142,8 +152,9 @@ class LevelPreview(UIWindow):
 			encounter.rect.move_ip(offset_x, offset_y)
 			encounter.set_position(encounter.rect)
 	
-	def toggle_movement(self):
-		self.allow_movement = not self.allow_movement
+	def set_movement(self,
+	                 allowed: bool) -> None:
+		self.allow_movement = allowed
 		for encounter in self.map:
 			if self.allow_movement:
 				encounter.enable()

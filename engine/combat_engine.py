@@ -1,8 +1,8 @@
 import random
-from typing import List, Tuple, Union
+from typing import List, Tuple, Union, Optional
 
 from heroes_party import Hero, HeroParty
-from level import Attack, Enemy, Level
+from level import Attack, Enemy, Level, Encounter
 
 
 # Refer to:
@@ -15,6 +15,7 @@ class CombatEngine:
 		self.turn_number = 0
 		self.currently_active = 0
 		self.sorted_entities = []
+		self.current_encounter: Optional[Encounter] = None
 		
 		self.pass_attack = Attack(name='Pass',
 		                          description='Pass the current turn.',
@@ -22,12 +23,12 @@ class CombatEngine:
 		                          target_positions='OOOO',
 		                          base_dmg=0)
 	
-	def start_encounter(self, game_data: Level):
+	def start_encounter(self, encounter):
 		self.turn_number = 0
+		self.current_encounter = encounter
 	
 	def is_encounter_over(self, heroes: HeroParty, game_data: Level):
-		current_encounter = game_data.rooms[game_data.current_room].encounter
-		return len(heroes.party) == 0 or len(current_encounter.entities.get('enemy', [])) == 0
+		return len(heroes.party) == 0 or len(self.current_encounter.entities.get('enemy', [])) == 0
 	
 	def sort_entities(self, entities: List[Union[Hero, Enemy]]) -> List[int]:
 		# Turn order is determined semi-randomly: 1d10+Speed.
@@ -36,10 +37,7 @@ class CombatEngine:
 		return sorted_entities
 	
 	def get_entities(self, heroes: HeroParty, game_data: Level) -> List[Union[Hero, Enemy]]:
-		# TODO: Should handle corridors as well :)
-		current_encounter = game_data.rooms[game_data.current_room].encounter
-		
-		return [*heroes.party, *current_encounter.entities.get('enemy', [])]
+		return [*heroes.party, *self.current_encounter.entities.get('enemy', [])]
 	
 	def start_turn(self, heroes: HeroParty, game_data: Level):
 		self.turn_number += 1
@@ -97,7 +95,7 @@ class CombatEngine:
 					dmg_taken = int(base_dmg * (1 - target_entity.prot)) * attack_mask[i]
 					target_entity.hp -= dmg_taken
 					attack_msgs.append(
-						f'<b>{current_attacker.name}</b> attacks <b>{target_entity.name}</b> ({attack.name}) and deals <i>{dmg_taken}</i> damage!')
+						f'<b>{current_attacker.name}</b>: {attack.description} <i>{dmg_taken}</i> damage dealt to <b>{target_entity.name}</b>!')
 					
 					stress += dmg_taken * (-1 if isinstance(current_attacker, Hero) else 1)
 		

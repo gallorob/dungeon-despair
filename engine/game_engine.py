@@ -1,29 +1,42 @@
 from enum import Enum, auto
-from typing import List, Optional
+from typing import List, Optional, Tuple, Union
 
 from engine.combat_engine import CombatEngine
 from heroes_party import get_temp_heroes, Hero
 from level import Attack, Level, Room, Enemy
+from player.base_player import Player
 
 
 class GameState(Enum):
+	LOADING: int = auto()
 	IDLE: int = auto()
 	IN_COMBAT: int = auto()
 
 
+class Turn(Enum):
+	HEROES: int = auto()
+	ENEMIES: int = auto()
+
+
 class GameEngine:
 	def __init__(self,
-	             level: Level):
+	             heroes_player: Player,
+	             enemies_player: Player):
 		self.combat_engine = CombatEngine()
 		
+		self.heroes_player = heroes_player
 		self.heroes = get_temp_heroes()
 		self.stress = 0
 		
+		self.enemies_player = enemies_player
+		
+		self.state = GameState.LOADING
+		self.game_data = None
 		self.encounter_idx = -1
-		
-		self.state = GameState.IDLE
-		
+	
+	def set_level(self, level: Level) -> None:
 		self.game_data = level
+		self.state = GameState.IDLE
 		
 		self.move_to_room(self.game_data.current_room, self.encounter_idx)
 	
@@ -62,7 +75,7 @@ class GameEngine:
 		return []
 	
 	def init_encounter(self):
-		self.combat_engine.start_encounter(game_data=self.game_data)
+		self.combat_engine.start_encounter(self.get_current_encounter())
 		self.combat_engine.start_turn(self.heroes, self.game_data)
 	
 	def get_attacks(self) -> List[Attack]:
@@ -128,3 +141,29 @@ class GameEngine:
 	
 	def same_area(self, clicked_room_name, encounter_idx):
 		return clicked_room_name == self.game_data.current_room and encounter_idx == self.encounter_idx
+	
+	def get_current_attacker_with_idx(self) -> Tuple[Union[Hero, Enemy], int]:
+		entity = self.combat_engine.currently_attacking(self.heroes, self.game_data)
+		return entity, self.combat_engine.get_entities(self.heroes, self.game_data).index(entity)
+	
+	def available_destinations(self) -> List[Tuple[str, int]]:
+		destinations = []
+		if isinstance(self.get_current_room(), Room):
+			room_name = self.get_current_room().name
+			for corridor in self.game_data.corridors:
+				if corridor.room_from == room_name:
+					destinations.append((corridor.name, 0))
+				elif corridor.room_to == room_name:
+					destinations.append((corridor.name, corridor.length - 1))
+		else:
+			corridor = self.get_current_room()
+			if self.encounter_idx == 0:
+				destinations.append((corridor.name, 1))
+				destinations.append((corridor.room_from, -1))
+			elif self.encounter_idx == corridor.length - 1:
+				destinations.append((corridor.name, corridor.length - 2))
+				destinations.append((corridor.room_to, -1))
+			else:
+				destinations.append((corridor.name, self.encounter_idx + 1))
+				destinations.append((corridor.name, self.encounter_idx - 1))
+		return destinations

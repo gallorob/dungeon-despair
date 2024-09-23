@@ -23,7 +23,3 @@ class EventsHistory(UIWindow):
 		if self.combat_history.scroll_bar:
 			self.combat_history.scroll_bar.start_percentage = 1.0
 			self.combat_history.scroll_bar.rebuild()
-	
-	def new_encounter(self):
-		self.add_text_and_scroll('<b><i>### NEW ENCOUNTER</i></b>')
-		self.add_text_and_scroll('<i>Turn 1:</i>')
