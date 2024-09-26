@@ -162,6 +162,25 @@ def update_targeted(event,
 	encounter_preview.update_targeted(idxs)
 
 
+def move_to_room(room_name,
+                 encounter_idx,
+                 game_engine,
+                 level_preview,
+                 encounter_preview):
+	messages.extend(game_engine.move_to_room(room_name=room_name, encounter_idx=encounter_idx))
+	level_preview.update_minimap(clicked_room_name, encounter_idx)
+	if isinstance(game_engine.get_current_room(), Room):
+		encounter_preview.display_room_background(game_engine.get_current_room())
+	else:
+		encounter_preview.display_corridor_background(game_engine.get_current_room(),
+		                                              idx=game_engine.encounter_idx)
+	encounter_preview.display_stress_level(game_engine.stress)
+	check_and_start_encounter(game_engine=game_engine,
+	                          level_preview=level_preview,
+	                          encounter_preview=encounter_preview,
+	                          combat_window=combat_window)
+
+
 while running:
 	time_delta = clock.tick(60) / 1000.0
 
@@ -206,37 +225,22 @@ while running:
 						clicked_room_name, encounter_idx = level_preview.check_clicked_encounter(event.pos)
 						if clicked_room_name and (not game_engine.same_area(clicked_room_name, encounter_idx)):
 							if game_engine.reachable(clicked_room_name, encounter_idx):
-								messages.extend(
-									game_engine.move_to_room(room_name=clicked_room_name, encounter_idx=encounter_idx))
-								level_preview.update_minimap(clicked_room_name, encounter_idx)
-								if isinstance(game_engine.get_current_room(), Room):
-									encounter_preview.display_room_background(game_engine.get_current_room())
-								else:
-									encounter_preview.display_corridor_background(game_engine.get_current_room(),
-									                                              idx=game_engine.encounter_idx)
-								encounter_preview.display_stress_level(game_engine.stress)
-								check_and_start_encounter(game_engine=game_engine,
-								                          level_preview=level_preview,
-								                          encounter_preview=encounter_preview,
-								                          combat_window=combat_window)
+								move_to_room(room_name=clicked_room_name,
+								             encounter_idx=encounter_idx,
+								             game_engine=game_engine,
+								             level_preview=level_preview,
+								             encounter_preview=encounter_preview)
 							else:
 								messages.append(f'You can\'t reach <b>{clicked_room_name}</b> from <b>{game_engine.get_current_room().name}</b>!')
 			else:
 				available_destinations = game_engine.available_destinations()
 				if len(available_destinations) > 0:
-					destination_room_name, encounter_idx = current_player.pick_destination(available_destinations)
-					messages.extend(game_engine.move_to_room(room_name=destination_room_name, encounter_idx=encounter_idx))
-					level_preview.update_minimap(destination_room_name, encounter_idx)
-					if isinstance(game_engine.get_current_room(), Room):
-						encounter_preview.display_room_background(game_engine.get_current_room())
-					else:
-						encounter_preview.display_corridor_background(game_engine.get_current_room(),
-						                                              idx=game_engine.encounter_idx)
-					encounter_preview.display_stress_level(game_engine.stress)
-					check_and_start_encounter(game_engine=game_engine,
-					                          level_preview=level_preview,
-					                          encounter_preview=encounter_preview,
-					                          combat_window=combat_window)
+					destination_room_name, encounter_idx = heroes_player.pick_destination(available_destinations)
+					move_to_room(room_name=destination_room_name,
+					             encounter_idx=encounter_idx,
+					             game_engine=game_engine,
+					             level_preview=level_preview,
+					             encounter_preview=encounter_preview)
 				
 		elif game_engine.state == GameState.IN_COMBAT:
 			current_attacker, _ = game_engine.get_current_attacker_with_idx()
@@ -266,7 +270,7 @@ while running:
 					                encounter_preview=encounter_preview,
 					                combat_window=combat_window)
 			else:  # Non-human player
-				attack = current_player.pick_attack(current_attacker)
+				attack = current_player.pick_attack(game_engine.get_attacks())
 				attack_msgs = game_engine.process_attack(attack)
 				messages.extend(attack_msgs)
 				check_aftermath(game_engine=game_engine,

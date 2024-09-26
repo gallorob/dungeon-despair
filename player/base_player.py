@@ -12,7 +12,7 @@ class Player:
 		self.type = player_type
 	
 	def pick_attack(self,
-	                attacker) -> int:
+	                attacks) -> int:
 		pass
 	
 	def pick_destination(self,

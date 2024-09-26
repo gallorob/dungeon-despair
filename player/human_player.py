@@ -6,7 +6,7 @@ class HumanPlayer(Player):
 		super().__init__(PlayerType.HUMAN)
 	
 	def pick_attack(self,
-	                attacker) -> int:
+	                attacks) -> int:
 		pass
 	
 	def pick_destination(self,

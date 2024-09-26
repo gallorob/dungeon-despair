@@ -8,8 +8,10 @@ class RandomPlayer(Player):
 		super().__init__(PlayerType.RANDOM)
 	
 	def pick_attack(self,
-	                attacker) -> int:
-		return random.randint(0, len(attacker.attacks))
+	                attacks) -> int:
+		active_attacks = [attack for attack in attacks if attack.active]
+		random_attack = random.choice(active_attacks)
+		return attacks.index(random_attack)
 	
 	def pick_destination(self,
 	                     destinations):
