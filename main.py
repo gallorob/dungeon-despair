@@ -255,14 +255,14 @@ while running:
 						if attack is not None:
 							attack_msgs = game_engine.process_attack(attack)
 							messages.extend(attack_msgs)
-						check_aftermath(game_engine=game_engine,
-						                level_preview=level_preview,
-						                encounter_preview=encounter_preview,
-						                combat_window=combat_window)
-						if game_engine.state == GameState.IN_COMBAT:
-							update_targeted(event=event,
+							check_aftermath(game_engine=game_engine,
+							                level_preview=level_preview,
 							                encounter_preview=encounter_preview,
 							                combat_window=combat_window)
+							if game_engine.state == GameState.IN_COMBAT:
+								update_targeted(event=event,
+								                encounter_preview=encounter_preview,
+								                combat_window=combat_window)
 				# Moving mouse events
 				elif event.type == pygame.MOUSEMOTION:
 					# Display targeted entities when hovering over attacks
