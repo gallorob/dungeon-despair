@@ -11,11 +11,8 @@ class GameState(Enum):
 	LOADING: int = auto()
 	IDLE: int = auto()
 	IN_COMBAT: int = auto()
-
-
-class Turn(Enum):
-	HEROES: int = auto()
-	ENEMIES: int = auto()
+	HEROES_WON: int = auto()
+	ENEMIES_WON: int = auto()
 
 
 class GameEngine:
@@ -167,3 +164,18 @@ class GameEngine:
 				destinations.append((corridor.name, self.encounter_idx + 1))
 				destinations.append((corridor.name, self.encounter_idx - 1))
 		return destinations
+	
+	def check_gameover(self):
+		# game over case #1: all hereoes are dead
+		if len(self.heroes.party) == 0:
+			self.state = GameState.ENEMIES_WON
+		# game over case #2: no more enemies in the level
+		else:
+			flag = False
+			for room in self.game_data.rooms.values():
+				flag |= len(room.encounter.entities.get('enemy', [])) > 0
+			for corridor in self.game_data.corridors:
+				for encounter in corridor.encounters:
+					flag |= len(encounter.entities.get('enemy', [])) > 0
+			if not flag:
+				self.state = GameState.HEROES_WON
