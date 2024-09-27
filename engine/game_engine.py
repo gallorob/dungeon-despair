@@ -2,9 +2,11 @@ from enum import Enum, auto
 from typing import List, Optional, Tuple, Union
 
 from engine.combat_engine import CombatEngine
+from engine.movement_engine import MovementEngine
 from heroes_party import get_temp_heroes, Hero
 from level import Attack, Level, Room, Enemy
 from player.base_player import Player
+from utils import get_current_encounter
 
 
 class GameState(Enum):
@@ -20,6 +22,7 @@ class GameEngine:
 	             heroes_player: Player,
 	             enemies_player: Player):
 		self.combat_engine = CombatEngine()
+		self.movement_engine = MovementEngine()
 		
 		self.heroes_player = heroes_player
 		self.heroes = get_temp_heroes()
@@ -29,50 +32,33 @@ class GameEngine:
 		
 		self.state = GameState.LOADING
 		self.game_data = None
-		self.encounter_idx = -1
+		# self.encounter_idx = -1
 	
 	def set_level(self, level: Level) -> None:
 		self.game_data = level
 		self.state = GameState.IDLE
 		
-		self.move_to_room(self.game_data.current_room, self.encounter_idx)
-	
-	def get_current_room(self):
-		if self.game_data.current_room in self.game_data.rooms:
-			return self.game_data.rooms[self.game_data.current_room]
-		else:
-			return self.game_data.get_corridor(*self.game_data.current_room.split('-'), ordered=False)
-	
-	def get_current_encounter(self):
-		if self.game_data.current_room in self.game_data.rooms:
-			return self.game_data.rooms[self.game_data.current_room].encounter
-		else:
-			return self.game_data.get_corridor(*self.game_data.current_room.split('-'), ordered=False).encounters[
-				self.encounter_idx]
+		self.movement_engine.move_to_room(level=self.game_data,
+		                                  dest_room_name=self.game_data.current_room)
 	
 	def get_heroes_party(self):
 		return self.heroes
 	
 	def move_to_room(self, room_name: str, encounter_idx: int) -> List[Optional[str]]:
-		prev_name = self.game_data.current_room
-		self.game_data.current_room = room_name
-		self.encounter_idx = encounter_idx
-		
-		if len(self.get_current_encounter().entities.get('enemy', [])) > 0:
+		msgs = self.movement_engine.move_to_room(level=self.game_data,
+		                                         dest_room_name=room_name,
+		                                         encounter_idx=encounter_idx)
+				
+		if len(get_current_encounter(level=self.game_data,
+		                             encounter_idx=self.movement_engine.encounter_idx).entities.get('enemy', [])) > 0:
 			self.state = GameState.IN_COMBAT
 			self.init_encounter()
 		
-		if prev_name != self.game_data.current_room:
-			area = self.get_current_room()
-			if isinstance(area, Room):
-				msg = f'You enter <b>{area.name}</b>: <i>{area.description}</i>'
-			else:
-				msg = f'You enter the corridor that connects <b>{area.room_from}</b> to <b>{area.room_to}</b>'
-			return [msg]
-		return []
+		return msgs
 	
 	def init_encounter(self):
-		self.combat_engine.start_encounter(self.get_current_encounter())
+		self.combat_engine.start_encounter(get_current_encounter(level=self.game_data,
+		                                                         encounter_idx=self.movement_engine.encounter_idx))
 		self.combat_engine.start_turn(self.heroes, self.game_data)
 	
 	def get_attacks(self) -> List[Attack]:
@@ -112,58 +98,9 @@ class GameEngine:
 			self.combat_engine.start_turn(self.heroes, self.game_data)
 			return f'<i>Turn {self.combat_engine.turn_number}:</i>'
 	
-	def reachable(self, clicked_room_name: str, idx: int) -> bool:
-		# check if current room is a corridor or a room
-		if isinstance(self.get_current_room(), Room):
-			# check if we are clicking on a connected corridor
-			names = clicked_room_name.split('-')
-			if len(names) == 2:
-				corridor = self.game_data.get_corridor(*names, ordered=False)
-				if corridor is not None:
-					# make sure the corridor connects this room
-					if corridor.room_to == self.get_current_room().name or corridor.room_from == self.get_current_room().name:
-						# we can go to a corridor only if idx = 0 or corridor.length - 2
-						return idx == 0 or idx == corridor.length - 1
-		else:
-			# check if we are clicking on the same corridor
-			if clicked_room_name == self.get_current_room().name:
-				# we can move only by 1 encounter
-				return idx in [x + self.encounter_idx for x in [-1, 1]]
-			else:
-				# check we are moving to a connected room
-				if clicked_room_name == self.get_current_room().room_from or clicked_room_name == self.get_current_room().room_to:
-					# make sure we are on the edge of the corridor
-					return self.encounter_idx == 0 or self.encounter_idx == self.get_current_room().length - 1
-		return False
-	
-	def same_area(self, clicked_room_name, encounter_idx):
-		return clicked_room_name == self.game_data.current_room and encounter_idx == self.encounter_idx
-	
 	def get_current_attacker_with_idx(self) -> Tuple[Union[Hero, Enemy], int]:
 		entity = self.combat_engine.currently_attacking(self.heroes, self.game_data)
 		return entity, self.combat_engine.get_entities(self.heroes, self.game_data).index(entity)
-	
-	def available_destinations(self) -> List[Tuple[str, int]]:
-		destinations = []
-		if isinstance(self.get_current_room(), Room):
-			room_name = self.get_current_room().name
-			for corridor in self.game_data.corridors:
-				if corridor.room_from == room_name:
-					destinations.append((corridor.name, 0))
-				elif corridor.room_to == room_name:
-					destinations.append((corridor.name, corridor.length - 1))
-		else:
-			corridor = self.get_current_room()
-			if self.encounter_idx == 0:
-				destinations.append((corridor.name, 1))
-				destinations.append((corridor.room_from, -1))
-			elif self.encounter_idx == corridor.length - 1:
-				destinations.append((corridor.name, corridor.length - 2))
-				destinations.append((corridor.room_to, -1))
-			else:
-				destinations.append((corridor.name, self.encounter_idx + 1))
-				destinations.append((corridor.name, self.encounter_idx - 1))
-		return destinations
 	
 	def check_gameover(self):
 		# game over case #1: all hereoes are dead

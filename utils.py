@@ -3,12 +3,27 @@ from PIL import Image
 from pygame import Surface
 
 from heroes_party import Hero
-from level import Attack
+from level import Attack, Level
 from level import Corridor, Enemy, Entity, Room, Trap, Treasure
 
 
 def img_to_pygame_sprite(img: Image) -> Surface:
 	return pygame.image.frombuffer(img.tobytes(), img.size, img.mode)
+	
+def get_current_room(level: Level):
+	if level.current_room in level.rooms.keys():
+		return level.rooms[level.current_room]
+	else:
+		return level.get_corridor(*level.current_room.split('-'), ordered=False)
+
+
+def get_current_encounter(level: Level,
+                          encounter_idx: int = -1):
+	curr_room = get_current_room(level)
+	if isinstance(curr_room, Room):
+		return curr_room.encounter
+	else:
+		return curr_room.encounters[encounter_idx]
 
 
 def basic_room_description(room: Room) -> str:
