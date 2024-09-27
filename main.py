@@ -1,5 +1,4 @@
 import os.path
-import time
 
 import pygame
 import pygame_gui
@@ -72,12 +71,14 @@ combat_window.hide()
 events_history.hide()
 
 # Game over window
-game_over_window = GameOver(pygame.Rect(0, 0, screen.get_width(), screen.get_height()), ui_manager)
+game_over_window = GameOver(rect=pygame.Rect(configs.screen_width / 4, configs.screen_height / 4,
+                                             configs.screen_width / 2, configs.screen_height / 2),
+                            ui_manager=ui_manager)
 game_over_window.hide()
 
 # Set players
 heroes_player = RandomPlayer()
-enemies_player = HumanPlayer()
+enemies_player = RandomPlayer()
 
 # Create game engine
 game_engine: GameEngine = GameEngine(heroes_player=heroes_player,
@@ -88,8 +89,11 @@ file_dlg = pygame_gui.windows.ui_file_dialog.UIFileDialog(
 	rect=pygame.Rect(configs.screen_width / 4, configs.screen_height / 4,
 	                 configs.screen_width / 2, configs.screen_height / 2),
 	manager=None,
-	window_title='Choose a level',
-	initial_file_path='./my_levels')
+	window_title='Choose a scenario',
+	initial_file_path='./my_scenarios',
+	allow_existing_files_only = False,
+	allow_picking_directories = False,
+	always_on_top=True)
 file_dlg.show()
 
 # Define a clock to control the frame rate

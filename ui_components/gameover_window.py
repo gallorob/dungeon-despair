@@ -12,7 +12,7 @@ class GameOver(UIWindow):
 	def __init__(self,
 	             rect: Rect,
 	             ui_manager: IUIManagerInterface):
-		super().__init__(rect, ui_manager, window_display_title='Game Over', resizable=False, draggable=False)
+		super().__init__(rect, ui_manager, window_display_title='Game Over', resizable=False, draggable=False, always_on_top=True)
 		
 		self.imgs = [
 			pygame.image.load(os.path.join(configs.assets, 'heroes_gameover_screen.jpeg')).convert_alpha(),
@@ -23,7 +23,7 @@ class GameOver(UIWindow):
 		
 		self.img_idx = -1
 		
-		self.background_image = UIImage(relative_rect=self.relative_rect,
+		self.background_image = UIImage(relative_rect=pygame.rect.Rect(0, 0, self.relative_rect.width, self.relative_rect.height),
 		                                image_surface=self.imgs[self.img_idx],
 		                                manager=self.ui_manager,
 		                                container=self.get_container(),
