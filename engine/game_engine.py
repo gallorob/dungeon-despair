@@ -38,13 +38,12 @@ class GameEngine:
 		self.game_data = level
 		self.state = GameState.IDLE
 		
-		self.movement_engine.move_to_room(level=self.game_data,
-		                                  dest_room_name=self.game_data.current_room)
+		self.move_to_room(room_name=self.game_data.current_room)
 	
 	def get_heroes_party(self):
 		return self.heroes
 	
-	def move_to_room(self, room_name: str, encounter_idx: int) -> List[Optional[str]]:
+	def move_to_room(self, room_name: str, encounter_idx: int = -1) -> List[Optional[str]]:
 		msgs = self.movement_engine.move_to_room(level=self.game_data,
 		                                         dest_room_name=room_name,
 		                                         encounter_idx=encounter_idx)
