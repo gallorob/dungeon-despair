@@ -18,6 +18,7 @@ from player.random_player import RandomPlayer
 from ui_components.action_menu import ActionWindow
 from ui_components.encounter_preview import EncounterPreview
 from ui_components.events_history import EventsHistory
+from ui_components.gameover_window import GameOver
 from ui_components.level_preview import LevelPreview
 
 # clear assets folder on exec
@@ -69,6 +70,10 @@ level_preview.hide()
 encounter_preview.hide()
 combat_window.hide()
 events_history.hide()
+
+# Game over window
+game_over_window = GameOver(pygame.Rect(0, 0, screen.get_width(), screen.get_height()), ui_manager)
+game_over_window.hide()
 
 # Set players
 heroes_player = RandomPlayer()
@@ -144,6 +149,8 @@ def check_aftermath(game_engine: GameEngine,
 		encounter_preview.update_attacking(attacker_idx)
 	
 	encounter_preview.display_stress_level(game_engine.stress)
+	
+	game_engine.check_gameover()
 
 
 def event_in_ui_element(event: EventType,
@@ -278,7 +285,7 @@ while running:
 				                encounter_preview=encounter_preview,
 				                combat_window=combat_window)
 				encounter_preview.update_targeted([])
-		
+			
 	# Update messages history
 	while len(messages) > 0:
 		message = messages.pop(0)
@@ -291,8 +298,19 @@ while running:
 	level_preview.update(time_delta)
 	combat_window.update(time_delta)
 	events_history.update(time_delta)
+	game_over_window.update(time_delta)
 	
+	if game_engine.state == GameState.HEROES_WON:
+		if game_over_window.img_idx == -1:
+			game_over_window.img_idx = 0
+			game_over_window.show()
+	elif game_engine.state == GameState.ENEMIES_WON:
+		if game_over_window.img_idx == -1:
+			game_over_window.img_idx = 1
+			game_over_window.show()
+		
 	ui_manager.draw_ui(screen)
+
 	pygame.display.update()
 
 pygame.quit()
