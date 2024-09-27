@@ -8,9 +8,9 @@ from pygame_gui import PackageResource
 from pygame_gui.elements import UIWindow
 
 from configs import configs
-from engine.game_engine import GameEngine, GameState, Turn
+from engine.game_engine import GameEngine, GameState
 from heroes_party import Hero
-from level import Room, Enemy
+from level import Room
 from level_utils import load_level
 from player.base_player import PlayerType
 from player.human_player import HumanPlayer
@@ -168,7 +168,7 @@ def move_to_room(room_name,
                  level_preview,
                  encounter_preview):
 	messages.extend(game_engine.move_to_room(room_name=room_name, encounter_idx=encounter_idx))
-	level_preview.update_minimap(clicked_room_name, encounter_idx)
+	level_preview.update_minimap(room_name, encounter_idx)
 	if isinstance(game_engine.get_current_room(), Room):
 		encounter_preview.display_room_background(game_engine.get_current_room())
 	else:
