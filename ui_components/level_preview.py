@@ -8,7 +8,11 @@ from pygame_gui.core.interfaces import IUIManagerInterface
 from pygame_gui.elements import UIButton, UIWindow
 
 from configs import configs
-from level import Corridor, Encounter, Level, Room
+from dungeon_despair.domain.corridor import Corridor
+from dungeon_despair.domain.encounter import Encounter
+from dungeon_despair.domain.level import Level
+from dungeon_despair.domain.room import Room
+from dungeon_despair.domain.utils import Direction
 from utils import basic_room_description
 
 
@@ -52,16 +56,16 @@ class LevelPreview(UIWindow):
 			room_positions[game_data.current_room] = (start_x, start_y)
 			
 			offsets_directions = {
-				'LEFT':  (-1, 0),
-				'RIGHT': (1, 0),
-				'UP':    (0, -1),
-				'DOWN':  (0, 1)
+				Direction.WEST:  (-1, 0),
+				Direction.EAST: (1, 0),
+				Direction.NORTH:    (0, -1),
+				Direction.SOUTH:  (0, 1)
 			}
 			correcting_directions = {
-				'LEFT':  (0, 1),
-				'RIGHT': (0, 1),
-				'UP':    (1, 0),
-				'DOWN':  (1, 0)
+				Direction.WEST:  (0, 1),
+				Direction.EAST: (0, 1),
+				Direction.NORTH:    (1, 0),
+				Direction.SOUTH:  (1, 0)
 			}
 			
 			# Queue to process rooms and their adjacent rooms
@@ -89,12 +93,12 @@ class LevelPreview(UIWindow):
 				self.map.append(room_button)
 				self._map_areas[room_button] = game_data.rooms[current_room]
 				
-				for direction, adjacent_room in game_data.level_geometry[current_room].items():
-					dx, dy = (room_button_size[0] - (room_button_size[0] // 2) if direction == 'RIGHT' else 0,
-					          room_button_size[1] - (room_button_size[1] // 2) if direction == 'DOWN' else 0)
+				for direction, adjacent_room in game_data.connections[current_room].items():
+					dx, dy = (room_button_size[0] - (room_button_size[0] // 2) if direction == Direction.EAST else 0,
+					          room_button_size[1] - (room_button_size[1] // 2) if direction == Direction.SOUTH else 0)
 					if adjacent_room and adjacent_room not in room_positions:
 						# Draw corridor
-						for corridor in game_data.corridors:
+						for corridor in game_data.corridors.values():
 							room_from, room_to = corridor.room_from, corridor.room_to
 							if (room_from == current_room or room_from == adjacent_room) and (
 								room_to == current_room or room_to == adjacent_room):
@@ -116,8 +120,8 @@ class LevelPreview(UIWindow):
 									self._map_idxs[corridor_button] = i
 								continue
 						# Calculate position of the adjacent room
-						ddx, ddy = (-room_button_size[0] / 2 if direction == 'RIGHT' else 0,
-						            -room_button_size[1] / 2 if direction == 'DOWN' else 0)
+						ddx, ddy = (-room_button_size[0] / 2 if direction == Direction.EAST else 0,
+						            -room_button_size[1] / 2 if direction == Direction.SOUTH else 0)
 						adjacent_pos = (current_pos[0] + dx + offsets_directions[direction][0] * room_button_size[0] + ddx,
 						                current_pos[1] + dy + offsets_directions[direction][1] * room_button_size[1] + ddy)
 						room_positions[adjacent_room] = adjacent_pos

@@ -1,6 +1,7 @@
 from typing import List, Optional, Tuple
 
-from level import Level, Room
+from dungeon_despair.domain.level import Level
+from dungeon_despair.domain.room import Room
 from utils import get_current_room
 
 
@@ -63,7 +64,7 @@ class MovementEngine:
 		destinations = []
 		curr_room = get_current_room(level=level)
 		if isinstance(curr_room, Room):
-			for corridor in level.corridors:
+			for corridor in level.corridors.values():
 				if corridor.room_from == curr_room.name:
 					destinations.append((corridor.name, 0))
 				elif corridor.room_to == curr_room.name:

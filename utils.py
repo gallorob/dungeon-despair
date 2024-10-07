@@ -1,20 +1,27 @@
 import pygame
 from PIL import Image
+from dungeon_despair.domain.attack import Attack
+from dungeon_despair.domain.corridor import Corridor
+from dungeon_despair.domain.entities.enemy import Enemy
+from dungeon_despair.domain.entities.entity import Entity
+from dungeon_despair.domain.entities.trap import Trap
+from dungeon_despair.domain.entities.treasure import Treasure
+from dungeon_despair.domain.level import Level
+from dungeon_despair.domain.room import Room
 from pygame import Surface
 
 from heroes_party import Hero
-from level import Attack, Level
-from level import Corridor, Enemy, Entity, Room, Trap, Treasure
 
 
 def img_to_pygame_sprite(img: Image) -> Surface:
 	return pygame.image.frombuffer(img.tobytes(), img.size, img.mode)
-	
+
+
 def get_current_room(level: Level):
 	if level.current_room in level.rooms.keys():
 		return level.rooms[level.current_room]
 	else:
-		return level.get_corridor(*level.current_room.split('-'), ordered=False)
+		return level.corridors[level.current_room]
 
 
 def get_current_encounter(level: Level,

@@ -7,10 +7,10 @@ from pygame_gui import PackageResource
 from pygame_gui.elements import UIWindow
 
 from configs import configs
+from dungeon_despair.domain.level import Level
+from dungeon_despair.domain.room import Room
 from engine.game_engine import GameEngine, GameState
 from heroes_party import Hero
-from level import Room
-from level_utils import load_level
 from player.base_player import PlayerType
 from player.human_player import HumanPlayer
 from player.random_player import RandomPlayer
@@ -20,12 +20,14 @@ from ui_components.events_history import EventsHistory
 from ui_components.gameover_window import GameOver
 from ui_components.level_preview import LevelPreview
 from utils import get_current_room, get_current_encounter
+from dungeon_despair.domain.configs import config as ddd_config
 
 # clear assets folder on exec
 if os.path.exists(os.path.join(configs.assets, 'dungeon_assets')):
 	for file in os.listdir(os.path.join(configs.assets, 'dungeon_assets')):
 		if os.path.isfile(os.path.join(configs.assets, 'dungeon_assets', file)):
 			os.remove(os.path.join(configs.assets, 'dungeon_assets', file))
+ddd_config.temp_dir = os.path.join(configs.assets, 'dungeon_assets')
 
 pygame.init()
 
@@ -120,6 +122,8 @@ def check_and_start_encounter(game_engine: GameEngine,
 		
 		encounter_preview.display_encounter(get_current_encounter(level=game_engine.game_data,
 		                                                          encounter_idx=game_engine.movement_engine.encounter_idx))
+		encounter_preview.display_stress_level(game_engine.stress)
+		
 		combat_window.display_attacks([*attacker.attacks, pass_attack])
 		encounter_preview.update_attacking(attacker_idx)
 		messages.append(f'Attacking: <b>{attacker.name}</b>')
@@ -147,6 +151,7 @@ def check_aftermath(game_engine: GameEngine,
 		                                                       encounter_idx=game_engine.movement_engine.encounter_idx),
 		                                 get_current_room(level=game_engine.game_data).name)
 		messages.append('<i><b>### END OF ENCOUNTER</i></b>')
+		encounter_preview.stress_level = None
 	elif game_engine.state == GameState.IN_COMBAT:
 		msg = game_engine.next_turn()
 		if msg:
@@ -156,9 +161,7 @@ def check_aftermath(game_engine: GameEngine,
 		messages.append(f'Attacking: <b>{attacker.name}</b>')
 		
 		encounter_preview.update_attacking(attacker_idx)
-	
-	encounter_preview.display_stress_level(game_engine.stress)
-	
+		
 	game_engine.check_gameover()
 
 
@@ -178,11 +181,11 @@ def update_targeted(event,
 	encounter_preview.update_targeted(idxs)
 
 
-def move_to_room(room_name,
-                 encounter_idx,
-                 game_engine,
-                 level_preview,
-                 encounter_preview):
+def move_to_room(room_name: str,
+                 encounter_idx: int,
+                 game_engine: GameEngine,
+                 level_preview: LevelPreview,
+                 encounter_preview: EncounterPreview):
 	messages.extend(game_engine.move_to_room(room_name=room_name, encounter_idx=encounter_idx))
 	level_preview.update_minimap(room_name, encounter_idx)
 	curr_room = get_current_room(game_engine.game_data)
@@ -191,7 +194,6 @@ def move_to_room(room_name,
 	else:
 		encounter_preview.display_corridor_background(curr_room,
 		                                              idx=game_engine.movement_engine.encounter_idx)
-	encounter_preview.display_stress_level(game_engine.stress)
 	check_and_start_encounter(game_engine=game_engine,
 	                          level_preview=level_preview,
 	                          encounter_preview=encounter_preview,
@@ -215,16 +217,15 @@ while running:
 				# no level was picked, so close the application
 				running = False
 			# Selecting a level
-			elif event.type == pygame_gui.UI_FILE_DIALOG_PATH_PICKED:  # and event.ui_element == file_dlg:
+			elif event.type == pygame_gui.UI_FILE_DIALOG_PATH_PICKED:
 				selected_file_path = event.text
-				level = load_level(selected_file_path)
+				level = Level.load_as_scenario(selected_file_path)
 				game_engine.set_level(level)
 				level_preview.show()
 				level_preview.create_minimap(game_engine.game_data)
 				encounter_preview.show()
 				encounter_preview.display_room_background(get_current_room(game_engine.game_data))
 				encounter_preview.display_heroes(game_engine.get_heroes_party())
-				encounter_preview.display_stress_level(game_engine.stress)
 				combat_window.show()
 				events_history.show()
 				check_and_start_encounter(game_engine=game_engine,
@@ -234,7 +235,7 @@ while running:
 		
 		elif game_engine.state == GameState.IDLE:
 			# Only human player can choose where to move
-			if heroes_player.type == PlayerType.HUMAN:  # current_player.type == PlayerType.HUMAN:
+			if heroes_player.type == PlayerType.HUMAN:
 				# Process all left mouse button clicks events
 				if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
 					# level_preview events
@@ -278,6 +279,7 @@ while running:
 						if attack is not None:
 							attack_msgs = game_engine.process_attack(attack)
 							messages.extend(attack_msgs)
+							encounter_preview.display_stress_level(game_engine.stress)
 							check_aftermath(game_engine=game_engine,
 							                level_preview=level_preview,
 							                encounter_preview=encounter_preview,
@@ -296,6 +298,7 @@ while running:
 				attack = current_player.pick_attack(game_engine.get_attacks())
 				attack_msgs = game_engine.process_attack(attack)
 				messages.extend(attack_msgs)
+				encounter_preview.display_stress_level(game_engine.stress)
 				check_aftermath(game_engine=game_engine,
 				                level_preview=level_preview,
 				                encounter_preview=encounter_preview,

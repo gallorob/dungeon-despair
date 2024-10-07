@@ -1,10 +1,12 @@
 from enum import Enum, auto
 from typing import List, Optional, Tuple, Union
 
+from dungeon_despair.domain.attack import Attack
+from dungeon_despair.domain.entities.enemy import Enemy
+from dungeon_despair.domain.level import Level
 from engine.combat_engine import CombatEngine
 from engine.movement_engine import MovementEngine
 from heroes_party import get_temp_heroes, Hero
-from level import Attack, Level, Room, Enemy
 from player.base_player import Player
 from utils import get_current_encounter
 
@@ -32,7 +34,6 @@ class GameEngine:
 		
 		self.state = GameState.LOADING
 		self.game_data = None
-		# self.encounter_idx = -1
 	
 	def set_level(self, level: Level) -> None:
 		self.game_data = level
@@ -110,7 +111,7 @@ class GameEngine:
 			flag = False
 			for room in self.game_data.rooms.values():
 				flag |= len(room.encounter.entities.get('enemy', [])) > 0
-			for corridor in self.game_data.corridors:
+			for corridor in self.game_data.corridors.values():
 				for encounter in corridor.encounters:
 					flag |= len(encounter.entities.get('enemy', [])) > 0
 			if not flag:

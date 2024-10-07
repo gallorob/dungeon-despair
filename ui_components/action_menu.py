@@ -4,7 +4,7 @@ from pygame import Rect
 from pygame_gui.core.interfaces import IUIManagerInterface
 from pygame_gui.elements import UIButton, UIWindow
 
-from level import Attack
+from dungeon_despair.domain.attack import Attack
 from utils import rich_attack_description
 
 

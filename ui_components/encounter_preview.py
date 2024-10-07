@@ -7,8 +7,10 @@ from pygame_gui.core.interfaces import IUIManagerInterface
 from pygame_gui.elements import UIImage, UILabel, UIWindow
 
 from configs import configs
+from dungeon_despair.domain.corridor import Corridor
+from dungeon_despair.domain.encounter import Encounter
+from dungeon_despair.domain.room import Room
 from heroes_party import HeroParty
-from level import Corridor, Encounter, Entity, Room
 from utils import rich_entity_description
 
 
@@ -41,23 +43,35 @@ class EncounterPreview(UIWindow):
 		if self.background_image:
 			self.background_image.kill()
 		self.background_image = None
-		area_image = pygame.image.load(os.path.join(configs.assets, 'dungeon_assets', corridor.sprite))
 		
+		before_image = pygame.image.load(os.path.join(configs.assets, 'dungeon_assets', corridor.sprites[idx]))
+		area_image = pygame.image.load(os.path.join(configs.assets, 'dungeon_assets', corridor.sprites[idx + 1]))
+		after_image = pygame.image.load(os.path.join(configs.assets, 'dungeon_assets', corridor.sprites[idx + 2]))
+
 		scale_factor = self.get_container().rect.height / area_image.get_height()
 		new_width, new_height = int(scale_factor * area_image.get_width()), int(scale_factor * area_image.get_height())
 		encounter_w = scale_factor * (area_image.get_width() / (corridor.length + 2))
-		area_image = pygame.transform.scale(area_image, (new_width, new_height))
 		
+		before_image = pygame.transform.scale(before_image, (new_width, new_height))
+		area_image = pygame.transform.scale(area_image, (new_width, new_height))
+		after_image = pygame.transform.scale(after_image, (new_width, new_height))
+
 		diff_w = self.get_container().rect.width - encounter_w
-		area_image = area_image.subsurface(Rect(((idx + 1) * encounter_w) - (diff_w / 2), 0,
-		                                        encounter_w + diff_w, area_image.get_height()))
+		before_image = before_image.subsurface(Rect(diff_w / 2, 0, before_image.get_width() - (diff_w / 2), before_image.get_height()))
+		after_image = after_image.subsurface(Rect(0, 0, diff_w / 2, after_image.get_height()))
+		
+		combined_surface = pygame.Surface((before_image.get_width() + area_image.get_width() + after_image.get_width(),
+		                                   area_image.get_height()))
+		combined_surface.blit(before_image, (0, 0))
+		combined_surface.blit(area_image, (before_image.get_width(), 0))
+		combined_surface.blit(after_image, (before_image.get_width() + area_image.get_width(), 0))
 		
 		corridor_rect = Rect(0, 0,
 		                     self.get_container().rect.width,
 		                     self.get_container().rect.height)
-		
+
 		self.background_image = UIImage(relative_rect=corridor_rect,
-		                                image_surface=area_image,
+		                                image_surface=combined_surface,
 		                                manager=self.ui_manager,
 		                                container=self.get_container(),
 		                                starting_height=self.starting_height
@@ -108,7 +122,7 @@ class EncounterPreview(UIWindow):
 				image_surface=enemy_image, manager=self.ui_manager, container=self.get_container(),
 				parent_element=self, anchors={
 					'centery': 'centery'
-				}, starting_height=self.starting_height + 2
+				}, starting_height=self.starting_height + 1
 			)
 			enemy_sprite.set_tooltip(rich_entity_description(enemy))
 			cum_padding += enemies_width
@@ -136,7 +150,7 @@ class EncounterPreview(UIWindow):
 				image_surface=hero_image, manager=self.ui_manager, container=self.get_container(),
 				parent_element=self, anchors={
 					'centery': 'centery'
-				}, starting_height=self.starting_height + 2
+				}, starting_height=self.starting_height + 1
 			)
 			hero_sprite.set_tooltip(rich_entity_description(hero))
 			cum_padding += min_width

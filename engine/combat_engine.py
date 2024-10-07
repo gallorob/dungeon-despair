@@ -1,8 +1,12 @@
 import random
 from typing import List, Tuple, Union, Optional
 
+from dungeon_despair.domain.attack import Attack
+from dungeon_despair.domain.encounter import Encounter
+from dungeon_despair.domain.entities.enemy import Enemy
+from dungeon_despair.domain.level import Level
 from heroes_party import Hero, HeroParty
-from level import Attack, Enemy, Level, Encounter
+from utils import get_current_encounter
 
 
 # Refer to:
@@ -118,7 +122,7 @@ class CombatEngine:
 		for i in reversed(dead_entities):
 			if i > len(heroes.party) - 1:
 				j = i - len(heroes.party)
-				game_data.rooms[game_data.current_room].encounter.entities.get('enemy', []).pop(j)
+				self.current_encounter.entities.get('enemy', []).pop(j)
 			else:
 				heroes.party.pop(i)
 			self.sorted_entities.pop(self.sorted_entities.index(i))
