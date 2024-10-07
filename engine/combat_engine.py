@@ -63,16 +63,28 @@ class CombatEngine:
 		
 		possible_attacks = current_attacker.attacks.copy()
 		possible_attacks.append(self.pass_attack)
-		# disable attacks that cannot be executed
 		attacker_idx = positioned_entities.index(current_attacker)
 		attacker_idx -= 0 if attacker_idx <= len(heroes.party) - 1 else len(heroes.party)
-		
+
+		# disable attacks that cannot be executed
 		for attack in possible_attacks:
-			attack_mask = self.convert_attack_mask(attack.starting_positions)
-			if isinstance(current_attacker, Hero):
-				attack_mask = list(reversed(attack_mask))
-			attack.active = attack_mask[attacker_idx] == 1
-		
+			if attack.name != 'Pass':
+				# Disable attacks that cannot be executed from the current attacker position
+				attack_mask = self.convert_attack_mask(attack.starting_positions)
+				if isinstance(current_attacker, Hero):
+					attack_mask = list(reversed(attack_mask))
+				attack.active = attack_mask[attacker_idx] == 1
+				# Disable attacks that do not have a target in a valid position
+				target_mask = self.convert_attack_mask(attack.target_positions)
+				if isinstance(current_attacker, Enemy):
+					target_mask = list(reversed(target_mask))
+				targets_n = len(positioned_entities) - len(heroes.party) if positioned_entities.index(current_attacker) <= len(heroes.party) - 1 else len(heroes.party)
+				targets = [1 if i < targets_n else 0 for i in range(len(target_mask))]
+				if isinstance(current_attacker, Enemy):
+					targets = list(reversed(targets))
+				target_and = [1 if i == 1 and j == 1 else 0 for i, j in zip(target_mask, targets)]
+				attack.active &= sum(target_and) > 0
+			
 		return possible_attacks
 	
 	def process_attack(self, heroes: HeroParty, game_data: Level, attack_idx: int) -> Tuple[int, List[str]]:
