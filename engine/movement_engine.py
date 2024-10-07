@@ -30,27 +30,21 @@ class MovementEngine:
 	              room_name: str,
 	              idx: int) -> bool:
 		curr_room = get_current_room(level=level)
-		# check if current room is a corridor or a room
 		if isinstance(curr_room, Room):
-			# check if we are clicking on a connected corridor
-			names = room_name.split('-')
-			if len(names) == 2:
-				corridor = level.get_corridor(*names, ordered=False)
-				if corridor is not None:
-					# make sure the corridor connects this room
-					if corridor.room_to == curr_room.name or corridor.room_from == curr_room.name:
-						# we can go to a corridor only if idx = 0 or corridor.length - 2
-						return idx == 0 or idx == corridor.length - 1
+			if room_name in level.corridors.keys():
+				corridor = level.corridors[room_name]
+				if corridor.room_from == curr_room.name:
+					return idx == 0
+				elif corridor.room_to == curr_room.name:
+					return idx == corridor.length - 1
 		else:
-			# check if we are clicking on the same corridor
 			if room_name == curr_room.name:
-				# we can move only by 1 encounter
 				return idx in [x + self.encounter_idx for x in [-1, 1]]
 			else:
-				# check we are moving to a connected room
-				if room_name == curr_room.room_from or room_name == curr_room.room_to:
-					# make sure we are on the edge of the corridor
-					return self.encounter_idx == 0 or self.encounter_idx == curr_room.length - 1
+				if room_name == curr_room.room_from:
+					return self.encounter_idx == 0
+				elif room_name == curr_room.room_to:
+					return self.encounter_idx == curr_room.length - 1
 		return False
 	
 	def same_area(self,
