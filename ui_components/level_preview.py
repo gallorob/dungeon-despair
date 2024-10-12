@@ -34,19 +34,22 @@ class LevelPreview(UIWindow):
 		treasure_text = ', $' if len(encounter.entities["treasure"]) > 0 else ''
 		return f'{enemies_text}{trap_text}{treasure_text}'
 	
-	def update_button_text(self, encounter: Encounter, roomcorridor_name: str):
+	def update_button_text(self, encounter: Encounter, roomcorridor_name: str, encounter_idx: int = -1):
+		idx = 0
 		for button, room in self._map_areas.items():
 			if room.name == roomcorridor_name:
-				# Update this area button text
-				button.text = self.get_encounter_text(encounter)
-				button.rebuild()
-				# If this is a room, update the corridors buttons as well
-				if isinstance(room, Room):
-					for other_button, other_area in self._map_areas.items():
-						if isinstance(other_area, Corridor) and other_area.room_from == roomcorridor_name:
-							other_button.text = self.get_encounter_text(other_area.encounters[self._map_idxs[other_button]])
-							other_button.rebuild()
-				break
+				idx += 1
+				if idx > encounter_idx:
+					# Update this area button text
+					button.text = self.get_encounter_text(encounter)
+					button.rebuild()
+					# If this is a room, update the corridors buttons as well
+					if isinstance(room, Room):
+						for other_button, other_area in self._map_areas.items():
+							if isinstance(other_area, Corridor) and other_area.room_from == roomcorridor_name:
+								other_button.text = self.get_encounter_text(other_area.encounters[self._map_idxs[other_button]])
+								other_button.rebuild()
+					break
 				
 	
 	def create_minimap(self, game_data: Level):

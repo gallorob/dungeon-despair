@@ -27,9 +27,13 @@ class CombatEngine:
 		                          target_positions='OOOO',
 		                          base_dmg=0)
 	
-	def start_encounter(self, encounter):
+	def start_encounter(self, encounter, heroes: HeroParty, game_data: Level) -> List[str]:
+		msgs = ['<b><i>### NEW ENCOUNTER</i></b>', '<i>Turn 1:</i>']
 		self.turn_number = 0
 		self.current_encounter = encounter
+		self.start_turn(heroes, game_data)
+		msgs.append(f'Attacking: <b>{self.currently_attacking(heroes, game_data).name}</b>')
+		return msgs
 	
 	def is_encounter_over(self, heroes: HeroParty, game_data: Level):
 		return len(heroes.party) == 0 or len(self.current_encounter.entities.get('enemy', [])) == 0

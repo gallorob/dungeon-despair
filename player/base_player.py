@@ -18,3 +18,9 @@ class Player:
 	def pick_destination(self,
 	                     destinations):
 		pass
+	
+	def choose_disarm_trap(self) -> bool:
+		pass
+	
+	def choose_loot_treasure(self) -> bool:
+		pass

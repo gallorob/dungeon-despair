@@ -28,24 +28,25 @@ class MovementEngine:
 	def reachable(self,
 	              level: Level,
 	              room_name: str,
-	              idx: int) -> bool:
+	              idx: int) -> Tuple[bool, str]:
 		curr_room = get_current_room(level=level)
+		is_reachable = False
 		if isinstance(curr_room, Room):
 			if room_name in level.corridors.keys():
 				corridor = level.corridors[room_name]
 				if corridor.room_from == curr_room.name:
-					return idx == 0
+					is_reachable = idx == 0
 				elif corridor.room_to == curr_room.name:
-					return idx == corridor.length - 1
+					is_reachable = idx == corridor.length - 1
 		else:
 			if room_name == curr_room.name:
-				return idx in [x + self.encounter_idx for x in [-1, 1]]
+				is_reachable = idx in [x + self.encounter_idx for x in [-1, 1]]
 			else:
 				if room_name == curr_room.room_from:
-					return self.encounter_idx == 0
+					is_reachable = self.encounter_idx == 0
 				elif room_name == curr_room.room_to:
-					return self.encounter_idx == curr_room.length - 1
-		return False
+					is_reachable = self.encounter_idx == curr_room.length - 1
+		return is_reachable, f'You can\'t reach <b>{room_name}</b> from <b>{level.current_room}</b>!'
 	
 	def same_area(self,
 	              level: Level,

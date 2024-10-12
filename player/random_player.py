@@ -16,3 +16,9 @@ class RandomPlayer(Player):
 	def pick_destination(self,
 	                     destinations):
 		return random.choice(destinations)
+	
+	def choose_disarm_trap(self) -> bool:
+		return random.random() >= 0.5
+	
+	def choose_loot_treasure(self) -> bool:
+		return random.random() >= 0.5

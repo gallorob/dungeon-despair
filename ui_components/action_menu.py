@@ -14,11 +14,17 @@ class ActionWindow(UIWindow):
 	             ui_manager: IUIManagerInterface):
 		super().__init__(rect, ui_manager, window_display_title='Actions', resizable=False, draggable=False)
 		self.attacks: List[UIButton] = []
+		self.choices: List[UIButton] = []
 	
 	def clear_attacks(self):
 		for attack in self.attacks:
 			attack.kill()
 		self.attacks = []
+	
+	def clear_choices(self):
+		for choice in self.choices:
+			choice.kill()
+		self.choices = []
 	
 	def display_attacks(self, attacks: List[Attack]):
 		self.clear_attacks()
@@ -41,6 +47,49 @@ class ActionWindow(UIWindow):
 			else:
 				attack_btn.disable()
 			self.attacks.append(attack_btn)
+	
+	def display_trap_choices(self):
+		self.clear_choices()
+		btn_height = self.get_container().rect.height / 8
+		starting_height = self.get_container().rect.height / 2 - btn_height
+		
+		for i, (choice, tooltip) in enumerate(zip(['Attempt to disarm', 'Ignore'],
+		                                          ['Try your luck disarming the trap', 'Move on and leave the trap as-is'])):
+			choice_btn = UIButton(text=choice,
+			                      relative_rect=Rect(0,
+			                                         starting_height + (i * btn_height),
+			                                         self.get_container().rect.width,
+			                                         btn_height),
+			                      manager=self.ui_manager,
+			                      starting_height=self.starting_height,
+			                      container=self.get_container())
+			choice_btn.set_tooltip(tooltip)
+			self.choices.append(choice_btn)
+	
+	def display_treasure_choices(self):
+		self.clear_choices()
+		btn_height = self.get_container().rect.height / 8
+		starting_height = self.get_container().rect.height / 2 - btn_height
+		
+		for i, (choice, tooltip) in enumerate(zip(['Try looting', 'Ignore'],
+		                                          ['Try your luck looting the treasure',
+		                                           'Move on and treasure behind'])):
+			choice_btn = UIButton(text=choice,
+			                      relative_rect=Rect(0,
+			                                         starting_height + (i * btn_height),
+			                                         self.get_container().rect.width,
+			                                         btn_height),
+			                      manager=self.ui_manager,
+			                      starting_height=self.starting_height,
+			                      container=self.get_container())
+			choice_btn.set_tooltip(tooltip)
+			self.choices.append(choice_btn)
+	
+	def check_clicked_choice(self, pos) -> Optional[int]:
+		for i, choice in enumerate(self.choices):
+			if choice.rect.collidepoint(pos):
+				return i
+		return None
 	
 	def check_clicked_attack(self, pos) -> Optional[int]:
 		for i, attack in enumerate(self.attacks):

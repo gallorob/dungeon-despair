@@ -1,4 +1,5 @@
 import os.path
+from argparse import Action
 
 import pygame
 import pygame_gui
@@ -53,8 +54,8 @@ room_preview_width = screen.get_width() * configs.left_panel_percentage
 level_minimap_height = screen.get_height() / 2
 level_minimap_width = screen.get_width() * (1 - configs.left_panel_percentage)
 
-combat_window_height = screen.get_height() / 2
-combat_window_width = screen.get_width() * (1 - configs.left_panel_percentage)
+action_window_height = screen.get_height() / 2
+action_window_width = screen.get_width() * (1 - configs.left_panel_percentage)
 
 events_history_height = screen.get_height() * (1 - configs.topleft_preview_percentage)
 events_history_width = screen.get_width() * configs.left_panel_percentage
@@ -64,13 +65,13 @@ encounter_preview = EncounterPreview(pygame.Rect(0, 0, room_preview_width, room_
 events_history = EventsHistory(pygame.Rect(0, room_preview_height, events_history_width, events_history_height),
                                ui_manager)
 level_preview = LevelPreview(pygame.Rect(room_preview_width, 0, level_minimap_width, level_minimap_height), ui_manager)
-combat_window = ActionWindow(
-	pygame.Rect(room_preview_width, level_minimap_height, combat_window_width, combat_window_height), ui_manager)
+action_window = ActionWindow(
+	pygame.Rect(room_preview_width, level_minimap_height, action_window_width, action_window_height), ui_manager)
 
 # Hide game areas on launch
 level_preview.hide()
 encounter_preview.hide()
-combat_window.hide()
+action_window.hide()
 events_history.hide()
 
 # Game over window
@@ -80,7 +81,7 @@ game_over_window = GameOver(rect=pygame.Rect(configs.screen_width / 4, configs.s
 game_over_window.hide()
 
 # Set players
-heroes_player = RandomPlayer()
+heroes_player = HumanPlayer()#RandomPlayer()
 enemies_player = HumanPlayer()
 
 # Create game engine
@@ -108,61 +109,89 @@ running = True
 messages = []
 
 
+def update_ui_previews(game_engine: GameEngine,
+                       level_preview: LevelPreview,
+                       encounter_preview: EncounterPreview):
+	curr_room = get_current_room(game_engine.game_data)
+	curr_encounter = get_current_encounter(level=game_engine.game_data,
+	                                       encounter_idx=game_engine.movement_engine.encounter_idx)
+	# update level preview
+	level_preview.set_movement(game_engine.state == GameState.IDLE)
+	level_preview.update_minimap(game_engine.game_data.current_room,
+	                             game_engine.movement_engine.encounter_idx)
+	level_preview.update_button_text(encounter=curr_encounter,
+	                                 roomcorridor_name=curr_room.name,
+	                                 encounter_idx=game_engine.movement_engine.encounter_idx)
+	# update encounter preview
+	if isinstance(curr_room, Room):
+		encounter_preview.display_room_background(curr_room)
+	else:
+		encounter_preview.display_corridor_background(curr_room,
+		                                              idx=game_engine.movement_engine.encounter_idx)
+	encounter_preview.display_encounter(curr_encounter)
+	encounter_preview.display_heroes(game_engine.get_heroes_party())
+	encounter_preview.update_targeted([])
+	encounter_preview.display_stress_level(game_engine.stress)
+
+
+def update_ui_actions(game_engine: GameEngine,
+                      action_window: ActionWindow):
+	action_window.clear_choices()
+	action_window.clear_attacks()
+	if game_engine.state == GameState.IN_COMBAT:
+		action_window.display_attacks(attacks=game_engine.get_attacks())
+	if game_engine.state == GameState.INSPECTING_TRAP:
+		action_window.display_trap_choices()
+	if game_engine.state == GameState.INSPECTING_TREASURE:
+		action_window.display_treasure_choices()
+
+
 def check_and_start_encounter(game_engine: GameEngine,
                               level_preview: LevelPreview,
                               encounter_preview: EncounterPreview,
-                              combat_window: ActionWindow):
-	level_preview.set_movement(game_engine.state == GameState.IDLE)
-	if game_engine.state == GameState.IN_COMBAT:
-		messages.append('<b><i>### NEW ENCOUNTER</i></b>')
-		messages.append('<i>Turn 1:</i>')
-		
-		attacker, attacker_idx = game_engine.get_current_attacker_with_idx()
-		pass_attack = game_engine.combat_engine.pass_attack
-		
-		encounter_preview.display_encounter(get_current_encounter(level=game_engine.game_data,
-		                                                          encounter_idx=game_engine.movement_engine.encounter_idx))
-		encounter_preview.display_stress_level(game_engine.stress)
-		
-		combat_window.display_attacks([*attacker.attacks, pass_attack])
-		encounter_preview.update_attacking(attacker_idx)
-		messages.append(f'Attacking: <b>{attacker.name}</b>')
+                              action_window: ActionWindow):
+	if game_engine.state == GameState.IN_COMBAT or game_engine.state == GameState.INSPECTING_TRAP or game_engine.state == GameState.INSPECTING_TREASURE:
+		if game_engine.state == GameState.IN_COMBAT:
+			action_window.display_attacks(game_engine.get_attacks())
+			attacker, attacker_idx = game_engine.get_current_attacker_with_idx()
+			encounter_preview.update_attacking(attacker_idx)
+		elif game_engine.state == GameState.INSPECTING_TRAP:
+			action_window.display_trap_choices()
+		elif game_engine.state == GameState.INSPECTING_TREASURE:
+			action_window.display_treasure_choices()
+	update_ui_previews(game_engine=game_engine,
+	                   level_preview=level_preview,
+	                   encounter_preview=encounter_preview)
 
 
 def check_aftermath(game_engine: GameEngine,
                     level_preview: LevelPreview,
                     encounter_preview: EncounterPreview,
-                    combat_window: ActionWindow):
+                    action_window: ActionWindow):
 	msgs = game_engine.check_dead_entities()
 	messages.extend(msgs)
+	msgs = game_engine.check_end_encounter()
+	messages.extend(msgs)
 	
-	combat_window.clear_attacks()
+	update_ui_previews(game_engine=game_engine,
+	                   level_preview=level_preview,
+	                   encounter_preview=encounter_preview)
 	
-	encounter_preview.display_encounter(get_current_encounter(level=game_engine.game_data,
-	                                                          encounter_idx=game_engine.movement_engine.encounter_idx))
-	encounter_preview.display_heroes(game_engine.get_heroes_party())
-	encounter_preview.update_targeted([])
-	
-	game_engine.check_end_encounter()
-	level_preview.set_movement(game_engine.state == GameState.IDLE)
-	
-	if game_engine.state == GameState.IDLE:
+	if game_engine.state != GameState.IN_COMBAT:
 		level_preview.update_button_text(get_current_encounter(level=game_engine.game_data,
 		                                                       encounter_idx=game_engine.movement_engine.encounter_idx),
-		                                 get_current_room(level=game_engine.game_data).name)
-		messages.append('<i><b>### END OF ENCOUNTER</i></b>')
-		encounter_preview.stress_level = None
+		                                 get_current_room(level=game_engine.game_data).name,
+		                                 encounter_idx=game_engine.movement_engine.encounter_idx)
 	elif game_engine.state == GameState.IN_COMBAT:
-		msg = game_engine.next_turn()
-		if msg:
-			messages.append(msg)
-		combat_window.display_attacks(game_engine.get_attacks())
+		msgs = game_engine.next_turn()
+		messages.extend(msgs)
 		attacker, attacker_idx = game_engine.get_current_attacker_with_idx()
-		messages.append(f'Attacking: <b>{attacker.name}</b>')
-		
 		encounter_preview.update_attacking(attacker_idx)
 		
-	game_engine.check_gameover()
+	messages.extend(game_engine.check_gameover())
+	
+	update_ui_actions(game_engine=game_engine,
+	                  action_window=action_window)
 
 
 def event_in_ui_element(event: EventType,
@@ -172,8 +201,8 @@ def event_in_ui_element(event: EventType,
 
 def update_targeted(event,
                     encounter_preview: EncounterPreview,
-                    combat_window: ActionWindow):
-	attack_idx = combat_window.check_hovered_attack(event.pos)
+                    action_window: ActionWindow):
+	attack_idx = action_window.check_hovered_attack(event.pos)
 	if attack_idx is not None:
 		idxs = game_engine.get_targeted_idxs(attack_idx)
 	else:
@@ -187,17 +216,13 @@ def move_to_room(room_name: str,
                  level_preview: LevelPreview,
                  encounter_preview: EncounterPreview):
 	messages.extend(game_engine.move_to_room(room_name=room_name, encounter_idx=encounter_idx))
-	level_preview.update_minimap(room_name, encounter_idx)
-	curr_room = get_current_room(game_engine.game_data)
-	if isinstance(curr_room, Room):
-		encounter_preview.display_room_background(curr_room)
-	else:
-		encounter_preview.display_corridor_background(curr_room,
-		                                              idx=game_engine.movement_engine.encounter_idx)
+	messages.extend(game_engine.update_state())
 	check_and_start_encounter(game_engine=game_engine,
 	                          level_preview=level_preview,
 	                          encounter_preview=encounter_preview,
-	                          combat_window=combat_window)
+	                          action_window=action_window)
+	update_ui_actions(game_engine=game_engine,
+	                  action_window=action_window)
 
 
 while running:
@@ -226,12 +251,13 @@ while running:
 				encounter_preview.show()
 				encounter_preview.display_room_background(get_current_room(game_engine.game_data))
 				encounter_preview.display_heroes(game_engine.get_heroes_party())
-				combat_window.show()
+				action_window.show()
 				events_history.show()
-				check_and_start_encounter(game_engine=game_engine,
-				                          level_preview=level_preview,
-				                          encounter_preview=encounter_preview,
-				                          combat_window=combat_window)
+				move_to_room(room_name=game_engine.game_data.current_room,
+				             encounter_idx=-1,
+				             game_engine=game_engine,
+				             level_preview=level_preview,
+				             encounter_preview=encounter_preview)
 		
 		elif game_engine.state == GameState.IDLE:
 			# Only human player can choose where to move
@@ -244,17 +270,17 @@ while running:
 						if clicked_room_name and (not game_engine.movement_engine.same_area(level=game_engine.game_data,
 						                                                                    room_name=clicked_room_name,
 						                                                                    encounter_idx=encounter_idx)):
-							if game_engine.movement_engine.reachable(level=game_engine.game_data,
-							                                         room_name=clicked_room_name,
-							                                         idx=encounter_idx):
+							is_reachable, err_msg = game_engine.movement_engine.reachable(level=game_engine.game_data,
+							                                                              room_name=clicked_room_name,
+							                                                              idx=encounter_idx)
+							if is_reachable:
 								move_to_room(room_name=clicked_room_name,
 								             encounter_idx=encounter_idx,
 								             game_engine=game_engine,
 								             level_preview=level_preview,
 								             encounter_preview=encounter_preview)
 							else:
-								messages.append(
-									f'You can\'t reach <b>{clicked_room_name}</b> from <b>{get_current_room(game_engine.game_data).name}</b>!')
+								messages.append(err_msg)
 			else:
 				available_destinations = game_engine.movement_engine.available_destinations(level=game_engine.game_data)
 				if len(available_destinations) > 0:
@@ -265,6 +291,55 @@ while running:
 					             level_preview=level_preview,
 					             encounter_preview=encounter_preview)
 		
+		elif game_engine.state == GameState.INSPECTING_TREASURE:
+			# Only human players can choose whether to loot treasures
+			if heroes_player.type == PlayerType.HUMAN:
+				if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+					if event_in_ui_element(event, action_window):
+						choice = action_window.check_clicked_choice(event.pos)
+						if choice is not None:
+							outcome_action = game_engine.attempt_looting(choice)
+							messages.extend(outcome_action)
+							game_engine.state = GameState.IDLE
+							action_window.clear_choices()
+							update_ui_previews(game_engine=game_engine,
+							                   level_preview=level_preview,
+							                   encounter_preview=encounter_preview)
+			else:
+				do_loot = heroes_player.choose_loot_treasure()
+				outcome_action = game_engine.attempt_looting(choice=0 if do_loot else 1)
+				messages.extend(outcome_action)
+				game_engine.state = GameState.IDLE
+				action_window.clear_choices()
+				update_ui_previews(game_engine=game_engine,
+				                   level_preview=level_preview,
+				                   encounter_preview=encounter_preview)
+		
+		elif game_engine.state == GameState.INSPECTING_TRAP:
+			# Only human players can choose whether to disarm traps
+			if heroes_player.type == PlayerType.HUMAN:
+				if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+					if event_in_ui_element(event, action_window):
+						choice = action_window.check_clicked_choice(event.pos)
+						if choice is not None:
+							outcome_action = game_engine.attempt_disarm(choice)
+							messages.extend(outcome_action)
+							game_engine.state = GameState.IDLE
+							action_window.clear_choices()
+							update_ui_previews(game_engine=game_engine,
+							                   level_preview=level_preview,
+							                   encounter_preview=encounter_preview)
+			else:
+				do_disarm = heroes_player.choose_disarm_trap()
+				outcome_action = game_engine.attempt_disarm(choice=0 if do_disarm else 1)
+				messages.extend(outcome_action)
+				game_engine.state = GameState.IDLE
+				action_window.clear_choices()
+				update_ui_previews(game_engine=game_engine,
+				                   level_preview=level_preview,
+				                   encounter_preview=encounter_preview)
+			
+		
 		elif game_engine.state == GameState.IN_COMBAT:
 			current_attacker, _ = game_engine.get_current_attacker_with_idx()
 			current_player = game_engine.heroes_player if isinstance(current_attacker,
@@ -273,9 +348,9 @@ while running:
 			if current_player.type == PlayerType.HUMAN:
 				# Process all left mouse button clicks events
 				if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-					# combat_window events
-					if event_in_ui_element(event, combat_window):
-						attack = combat_window.check_clicked_attack(event.pos)
+					# action_window events
+					if event_in_ui_element(event, action_window):
+						attack = action_window.check_clicked_attack(event.pos)
 						if attack is not None:
 							attack_msgs = game_engine.process_attack(attack)
 							messages.extend(attack_msgs)
@@ -283,17 +358,17 @@ while running:
 							check_aftermath(game_engine=game_engine,
 							                level_preview=level_preview,
 							                encounter_preview=encounter_preview,
-							                combat_window=combat_window)
+							                action_window=action_window)
 							if game_engine.state == GameState.IN_COMBAT:
 								update_targeted(event=event,
 								                encounter_preview=encounter_preview,
-								                combat_window=combat_window)
+								                action_window=action_window)
 				# Moving mouse events
 				elif event.type == pygame.MOUSEMOTION:
 					# Display targeted entities when hovering over attacks
 					update_targeted(event=event,
 					                encounter_preview=encounter_preview,
-					                combat_window=combat_window)
+					                action_window=action_window)
 			else:  # Non-human player
 				attack = current_player.pick_attack(game_engine.get_attacks())
 				attack_msgs = game_engine.process_attack(attack)
@@ -302,7 +377,7 @@ while running:
 				check_aftermath(game_engine=game_engine,
 				                level_preview=level_preview,
 				                encounter_preview=encounter_preview,
-				                combat_window=combat_window)
+				                action_window=action_window)
 				encounter_preview.update_targeted([])
 	
 	# Update messages history
@@ -315,7 +390,7 @@ while running:
 	
 	encounter_preview.update(time_delta)
 	level_preview.update(time_delta)
-	combat_window.update(time_delta)
+	action_window.update(time_delta)
 	events_history.update(time_delta)
 	game_over_window.update(time_delta)
 	

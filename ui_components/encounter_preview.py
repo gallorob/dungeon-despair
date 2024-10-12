@@ -45,7 +45,10 @@ class EncounterPreview(UIWindow):
 	def display_corridor_background(self, corridor: Corridor, idx: int):
 		if self.background_image:
 			self.background_image.kill()
+		if self.stress_level:
+			self.stress_level.kill()
 		self.background_image = None
+		self.stress_level = None
 		
 		before_image = pygame.image.load(os.path.join(configs.assets, 'dungeon_assets', corridor.sprites[idx]))
 		area_image = pygame.image.load(os.path.join(configs.assets, 'dungeon_assets', corridor.sprites[idx + 1]))
@@ -84,7 +87,10 @@ class EncounterPreview(UIWindow):
 	def display_room_background(self, room: Room):
 		if self.background_image:
 			self.background_image.kill()
+		if self.stress_level:
+			self.stress_level.kill()
 		self.background_image = None
+		self.stress_level = None
 		area_image = pygame.image.load(os.path.join(configs.assets, 'dungeon_assets', room.sprite))
 		scale_factor = min(self.get_container().rect.width / area_image.get_width(),
 		                   self.get_container().rect.height / area_image.get_height())
@@ -152,12 +158,12 @@ class EncounterPreview(UIWindow):
 		# show traps
 		self.traps = __add_and_show_entities(max_n=4,#configs.max_traps_per_encounter,
 		                                     entity_type='trap',
-		                                     height_diff=0,
+		                                     height_diff=1,
 		                                     additional_x_offset=-self.padding)
 		# show treasures
 		self.treasures = __add_and_show_entities(max_n=4,#configs.max_treasures_per_encounter,
 		                                         entity_type='treasure',
-		                                         height_diff=0,
+		                                         height_diff=1,
 		                                         additional_x_offset=-self.padding)
 	
 	def display_heroes(self, heroes: HeroParty):
