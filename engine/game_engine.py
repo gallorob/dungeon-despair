@@ -127,12 +127,12 @@ class GameEngine:
 			return ['<i><b>GAME OVER</i></b>: Enemies won!']
 		# game over case #2: no more enemies in the level
 		else:
-			flag = True  # False
-			# for room in self.game_data.rooms.values():
-			# 	flag |= len(room.encounter.entities.get('enemy', [])) > 0
-			# for corridor in self.game_data.corridors.values():
-			# 	for encounter in corridor.encounters:
-			# 		flag |= len(encounter.entities.get('enemy', [])) > 0
+			flag = False
+			for room in self.game_data.rooms.values():
+				flag |= len(room.encounter.entities.get('enemy', [])) > 0
+			for corridor in self.game_data.corridors.values():
+				for encounter in corridor.encounters:
+					flag |= len(encounter.entities.get('enemy', [])) > 0
 			if not flag:
 				self.state = GameState.HEROES_WON
 				return ['<i><b>GAME OVER</i></b>: Heroes won!']

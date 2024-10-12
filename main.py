@@ -81,7 +81,7 @@ game_over_window = GameOver(rect=pygame.Rect(configs.screen_width / 4, configs.s
 game_over_window.hide()
 
 # Set players
-heroes_player = HumanPlayer()#RandomPlayer()
+heroes_player = RandomPlayer()
 enemies_player = HumanPlayer()
 
 # Create game engine
