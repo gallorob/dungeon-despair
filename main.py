@@ -82,7 +82,7 @@ game_over_window.hide()
 
 # Set players
 heroes_player = RandomPlayer()
-enemies_player = HumanPlayer()
+enemies_player = RandomPlayer()
 
 # Create game engine
 game_engine: GameEngine = GameEngine(heroes_player=heroes_player,
@@ -150,6 +150,9 @@ def check_and_start_encounter(game_engine: GameEngine,
                               level_preview: LevelPreview,
                               encounter_preview: EncounterPreview,
                               action_window: ActionWindow):
+	update_ui_previews(game_engine=game_engine,
+	                   level_preview=level_preview,
+	                   encounter_preview=encounter_preview)
 	if game_engine.state == GameState.IN_COMBAT or game_engine.state == GameState.INSPECTING_TRAP or game_engine.state == GameState.INSPECTING_TREASURE:
 		if game_engine.state == GameState.IN_COMBAT:
 			action_window.display_attacks(game_engine.get_attacks())
@@ -159,9 +162,6 @@ def check_and_start_encounter(game_engine: GameEngine,
 			action_window.display_trap_choices()
 		elif game_engine.state == GameState.INSPECTING_TREASURE:
 			action_window.display_treasure_choices()
-	update_ui_previews(game_engine=game_engine,
-	                   level_preview=level_preview,
-	                   encounter_preview=encounter_preview)
 
 
 def check_aftermath(game_engine: GameEngine,
