@@ -1,5 +1,4 @@
 import os.path
-from argparse import Action
 
 import pygame
 import pygame_gui
@@ -300,7 +299,6 @@ while running:
 						if choice is not None:
 							outcome_action = game_engine.attempt_looting(choice)
 							messages.extend(outcome_action)
-							game_engine.state = GameState.IDLE
 							action_window.clear_choices()
 							update_ui_previews(game_engine=game_engine,
 							                   level_preview=level_preview,
@@ -309,7 +307,6 @@ while running:
 				do_loot = heroes_player.choose_loot_treasure()
 				outcome_action = game_engine.attempt_looting(choice=0 if do_loot else 1)
 				messages.extend(outcome_action)
-				game_engine.state = GameState.IDLE
 				action_window.clear_choices()
 				update_ui_previews(game_engine=game_engine,
 				                   level_preview=level_preview,

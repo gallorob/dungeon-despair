@@ -147,6 +147,7 @@ class GameEngine:
 			self.stress += stress_diff
 		else:
 			msgs = ['You ignore the treasure... For now.']
+		self.state = GameState.IDLE
 		return msgs
 	
 	def attempt_disarm(self,
@@ -159,4 +160,5 @@ class GameEngine:
 			self.stress += stress_diff
 		else:
 			msgs = ['You ignore the trap... For now.']
+		self.state = GameState.IDLE
 		return msgs
