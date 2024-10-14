@@ -1,0 +1,1 @@
+python .\dd_cli.py run_simulation .\my_scenarios\baselevel.bin random 10 ./cli_test.log
