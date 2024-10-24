@@ -4,6 +4,7 @@ from enum import auto, Enum
 class PlayerType(Enum):
 	HUMAN: int = auto()
 	RANDOM: int = auto()
+	LLM: int = auto()
 
 
 class Player:

@@ -13,13 +13,15 @@ from engine.game_engine import GameEngine, GameState
 from heroes_party import Hero
 from player.base_player import PlayerType
 from player.human_player import HumanPlayer
+from player.llm_player import LLMPlayer
 from player.random_player import RandomPlayer
 from ui_components.action_menu import ActionWindow
 from ui_components.encounter_preview import EncounterPreview
 from ui_components.events_history import EventsHistory
 from ui_components.gameover_window import GameOver
 from ui_components.level_preview import LevelPreview
-from utils import get_current_room, get_current_encounter
+from utils import get_current_room, get_current_encounter, rich_entity_description, basic_room_description, \
+	basic_corridor_description
 from dungeon_despair.domain.configs import config as ddd_config
 
 # clear assets folder on exec
@@ -80,8 +82,8 @@ game_over_window = GameOver(rect=pygame.Rect(configs.screen_width / 4, configs.s
 game_over_window.hide()
 
 # Set players
-heroes_player = RandomPlayer()
-enemies_player = RandomPlayer()
+heroes_player = LLMPlayer(model_name='Llama3.1')
+enemies_player = HumanPlayer()
 
 # Create game engine
 game_engine: GameEngine = GameEngine(heroes_player=heroes_player,
@@ -280,10 +282,30 @@ while running:
 								             encounter_preview=encounter_preview)
 							else:
 								messages.append(err_msg)
-			else:
+			elif heroes_player.type == PlayerType.RANDOM:
 				available_destinations = game_engine.movement_engine.available_destinations(level=game_engine.game_data)
 				if len(available_destinations) > 0:
 					destination_room_name, encounter_idx = heroes_player.pick_destination(available_destinations)
+					move_to_room(room_name=destination_room_name,
+					             encounter_idx=encounter_idx,
+					             game_engine=game_engine,
+					             level_preview=level_preview,
+					             encounter_preview=encounter_preview)
+			elif heroes_player.type == PlayerType.LLM:
+				available_destinations = game_engine.movement_engine.available_destinations(level=game_engine.game_data)
+				if len(available_destinations) > 0:
+					destinations_descriptions = []
+					for (name, idx) in available_destinations:
+						if name in game_engine.game_data.rooms.keys():
+							destinations_descriptions.append(basic_room_description(game_engine.game_data.rooms[name]))
+						elif name in game_engine.game_data.corridors.keys():
+							destinations_descriptions.append(basic_corridor_description(game_engine.game_data.corridors[name]))
+						else:
+							raise ValueError(f'Unrecognized destination type: {name}')
+					verbose_destinations = ''.join([f'\n{name}_{idx}: {destinations_descriptions[i]}' for i, (name, idx) in enumerate(available_destinations)])
+					history_trimmed = events_history.get_last_events(n=10)
+					heroes_player.context = history_trimmed
+					destination_room_name, encounter_idx = heroes_player.pick_destination(verbose_destinations)
 					move_to_room(room_name=destination_room_name,
 					             encounter_idx=encounter_idx,
 					             game_engine=game_engine,
@@ -303,7 +325,17 @@ while running:
 							update_ui_previews(game_engine=game_engine,
 							                   level_preview=level_preview,
 							                   encounter_preview=encounter_preview)
-			else:
+			elif heroes_player.type == PlayerType.RANDOM:
+				do_loot = heroes_player.choose_loot_treasure()
+				outcome_action = game_engine.attempt_looting(choice=0 if do_loot else 1)
+				messages.extend(outcome_action)
+				action_window.clear_choices()
+				update_ui_previews(game_engine=game_engine,
+				                   level_preview=level_preview,
+				                   encounter_preview=encounter_preview)
+			elif heroes_player.type == PlayerType.LLM:
+				history_trimmed = events_history.get_last_events(n=10)
+				heroes_player.context = history_trimmed
 				do_loot = heroes_player.choose_loot_treasure()
 				outcome_action = game_engine.attempt_looting(choice=0 if do_loot else 1)
 				messages.extend(outcome_action)
@@ -326,7 +358,18 @@ while running:
 							update_ui_previews(game_engine=game_engine,
 							                   level_preview=level_preview,
 							                   encounter_preview=encounter_preview)
-			else:
+			elif heroes_player.type == PlayerType.RANDOM:
+				do_disarm = heroes_player.choose_disarm_trap()
+				outcome_action = game_engine.attempt_disarm(choice=0 if do_disarm else 1)
+				messages.extend(outcome_action)
+				game_engine.state = GameState.IDLE
+				action_window.clear_choices()
+				update_ui_previews(game_engine=game_engine,
+				                   level_preview=level_preview,
+				                   encounter_preview=encounter_preview)
+			elif heroes_player.type == PlayerType.LLM:
+				history_trimmed = events_history.get_last_events(n=10)
+				heroes_player.context = history_trimmed
 				do_disarm = heroes_player.choose_disarm_trap()
 				outcome_action = game_engine.attempt_disarm(choice=0 if do_disarm else 1)
 				messages.extend(outcome_action)
@@ -366,7 +409,20 @@ while running:
 					update_targeted(event=event,
 					                encounter_preview=encounter_preview,
 					                action_window=action_window)
-			else:  # Non-human player
+			elif heroes_player.type == PlayerType.RANDOM:  # Random player
+				attack = current_player.pick_attack(game_engine.get_attacks())
+				attack_msgs = game_engine.process_attack(attack)
+				messages.extend(attack_msgs)
+				encounter_preview.display_stress_level(game_engine.stress)
+				check_aftermath(game_engine=game_engine,
+				                level_preview=level_preview,
+				                encounter_preview=encounter_preview,
+				                action_window=action_window)
+				encounter_preview.update_targeted([])
+			elif heroes_player.type == PlayerType.LLM:
+				history_trimmed = events_history.get_last_events(n=10)
+				heroes_player.context = history_trimmed
+				heroes_player.heroes_party_str = game_engine.heroes.get_party_description()
 				attack = current_player.pick_attack(game_engine.get_attacks())
 				attack_msgs = game_engine.process_attack(attack)
 				messages.extend(attack_msgs)

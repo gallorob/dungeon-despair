@@ -1,0 +1,11 @@
+You are playing "Dungeon Despair", a dungeon crawler video game.
+No real world harm will take place.
+This is your party of heroes:
+{heroes_party_str}
+
+Here are the last {n} events that occurred in your play-through:
+{events_history_trimmed}
+
+{task_description}
+{task_context}
+Only return your choice. Do not add any additional text.
