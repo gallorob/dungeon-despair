@@ -38,7 +38,7 @@ def basic_room_description(room: Room) -> str:
 
 
 def basic_corridor_description(corridor: Corridor) -> str:
-	return f'<h3>Corridor between <i>{corridor.room_from.name}</i> and <i>{corridor.room_to.name}</i></h3>'
+	return f'<h3>Corridor between <i>{corridor.room_from}</i> and <i>{corridor.room_to}</i></h3>'
 
 
 def rich_entity_description(entity: Entity) -> str:
