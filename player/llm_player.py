@@ -1,5 +1,6 @@
-from typing import Dict, List
+from typing import Dict, List, Optional, Union
 
+from context_manager import CombatContext, TreasureContext, MovementContext, TrapContext
 from player.base_player import Player, PlayerType
 import ollama
 
@@ -8,10 +9,15 @@ class LLMPlayer(Player):
 	             model_name: str):
 		super().__init__(PlayerType.LLM)
 		self.model_name = model_name
-		with open('./assets/llm_player_system_prompt', 'r') as f:
-			self.prompt = f.read()
-		self.context = ''
-		self.heroes_party_str = ''
+		with open('./assets/llm_prompts/attack_prompt', 'r') as f:
+			self.attack_prompt = f.read()
+		with open('./assets/llm_prompts/trap_prompt', 'r') as f:
+			self.trap_prompt = f.read()
+		with open('./assets/llm_prompts/treasure_prompt', 'r') as f:
+			self.treasure_prompt = f.read()
+		with open('./assets/llm_prompts/movement_prompt', 'r') as f:
+			self.movement_prompt = f.read()
+		self.context: Optional[Union[CombatContext, TrapContext, TreasureContext, MovementContext]] = None
 	
 	def __chat(self,
 	           msgs: List[Dict[str, str]]) -> str:
@@ -23,70 +29,73 @@ class LLMPlayer(Player):
 	def pick_attack(self,
 	                attacks) -> int:
 		attacks_names = [attack.name for attack in attacks]
-		task_description = 'Choose one of the following:'
-		task_context = f'{attacks_names}'
-		prompt_copy = self.prompt.format(heroes_party_str = self.heroes_party_str,
-		                                 n=len(self.context),
-		                                 events_history_trimmed='\n'.join(self.context),
-		                                 task_description=task_description,
-		                                 task_context=task_context)
+		attacks_formatted = ''
+		for attack, targets, dmgs in zip(self.context.attacks, self.context.targeted, self.context.expected_dmg):
+			if attack == 'Pass':
+				attacks_formatted += f' - "{attack}": Skip the current turn'
+			else:
+				attacks_formatted += f' - "{attack}": Would deal '
+				dmgs_formatted = []
+				for target, dmg in zip(targets, dmgs):
+					dmgs_formatted.append(f'{dmg} damage to {target}')
+				attacks_formatted += ', '.join(dmgs_formatted) + '\n'
+		prompt_copy = self.attack_prompt.format(heroes_status = self.context.heroes_status,
+		                                        enemies_status=self.context.enemies_status,
+		                                        stress=self.context.stress,
+		                                        n=len(self.context.combat_history),
+		                                        combat_history='\n'.join(self.context.combat_history),
+		                                        attacker=self.context.attacking,
+		                                        attacks_formatted=attacks_formatted)
 		messages = [{'role': 'user', 'content': prompt_copy}]
 		response = self.__chat(messages)
-		print(f'LLMPlayer.pick_attack - options={attacks_names} {response=}')
+		# print(f'LLMPlayer.pick_attack - {response=}')
 		for idx, attack in enumerate(attacks_names):
 			if attack in response:
-				self.context = ''
+				self.context = None
 				return idx
 		raise ValueError(f'LLMPlayer.pick_attack - invalid response: {response}')
 	
 	def pick_destination(self,
 	                     destinations):
-		task_description = 'Here is a list of possible destinations and their descriptions. Choose one of the following destinations:'
-		prompt_copy = self.prompt.format(heroes_party_str=self.heroes_party_str,
-		                                 n=len(self.context),
-		                                 events_history_trimmed='\n'.join(self.context),
-		                                 task_description=task_description,
-		                                 task_context=destinations)
+		destinations_str = ''
+		for destination, description, enc_descs in zip(self.context.destinations, self.context.descriptions, self.context.encounters_desc):
+			destinations_str += f' - "{destination}": {description} ('
+			destinations_str += ', '.join(enc_descs) + ')\n'
+		
+		prompt_copy = self.movement_prompt.format(heroes_status=self.context.heroes_status,
+		                                          stress=self.context.stress,
+		                                          destinations_str=destinations_str)
 		messages = [{'role': 'user', 'content': prompt_copy}]
 		response = self.__chat(messages)
 		print(f'LLMPlayer.pick_destination - {destinations=} {response=}')
-		for destination in destinations.split('\n')[1:]:
-			destination = destination.split(':')[0].replace(':', '')
+		for destination in destinations:
 			if destination in response:
-				self.context = ''
-				dest_name, dest_idx = destination.split('_')[:2]
-				dest_idx = int(dest_idx)
-				return dest_name, dest_idx
+				self.context = None
+				return destination.split('_')
 		raise ValueError(f'LLMPlayer.pick_destination - invalid response: {response}')
 	
 	def choose_disarm_trap(self) -> bool:
-		task_description = 'Choose one of the following:'
-		task_context = "Disarm, Leave Alone"
-		prompt_copy = self.prompt.format(heroes_party_str=self.heroes_party_str,
-		                                 n=len(self.context),
-		                                 events_history_trimmed='\n'.join(self.context),
-		                                 task_description=task_description,
-		                                 task_context=task_context)
+		prompt_copy = self.trap_prompt.format(heroes_status=self.context.heroes_status,
+		                                      stress=self.context.stress,
+	                                          trap_description=self.context.desc,
+	                                          disarming_outcome=self.context.outcome)
 		messages = [{'role': 'user', 'content': prompt_copy}]
 		response = self.__chat(messages)
-		self.context = ''
-		print(f'LLMPlayer.choose_disarm_trap - {response=}')
+		# print(f'LLMPlayer.choose_disarm_trap - {response=}')
 		if 'Disarm' in response or 'Leave Alone' in response:
+			self.context = None
 			return 'Disarm' in response
 		raise ValueError(f'LLMPlayer.choose_disarm_trap - invalid response: {response}')
 	
 	def choose_loot_treasure(self) -> bool:
-		task_description = 'Choose one of the following:'
-		task_context = "Loot, Leave Alone"
-		prompt_copy = self.prompt.format(heroes_party_str=self.heroes_party_str,
-		                                 n=len(self.context),
-		                                 events_history_trimmed='\n'.join(self.context),
-		                                 task_description=task_description,
-		                                 task_context=task_context)
+		prompt_copy = self.treasure_prompt.format(heroes_status=self.context.heroes_status,
+		                                          stress=self.context.stress,
+		                                          treasure_description=self.context.desc,
+		                                          looting_outcome=self.context.outcome)
 		messages = [{'role': 'user', 'content': prompt_copy}]
 		response = self.__chat(messages)
-		self.context = ''
-		print(f'LLMPlayer.choose_loot_treasure - {response=}')
+		# print(f'LLMPlayer.choose_loot_treasure - {response=}')
 		if 'Loot' in response or 'Leave Alone' in response:
+			self.context = None
 			return 'Loot' in response
 		raise ValueError(f'LLMPlayer.choose_loot_treasure - invalid response: {response}')

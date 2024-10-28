@@ -7,6 +7,7 @@ from pygame_gui import PackageResource
 from pygame_gui.elements import UIWindow
 
 from configs import configs
+from context_manager import ContextManager
 from dungeon_despair.domain.level import Level
 from dungeon_despair.domain.room import Room
 from engine.game_engine import GameEngine, GameState
@@ -82,7 +83,7 @@ game_over_window = GameOver(rect=pygame.Rect(configs.screen_width / 4, configs.s
 game_over_window.hide()
 
 # Set players
-heroes_player = LLMPlayer(model_name='Llama3.1')
+heroes_player = LLMPlayer(model_name='Llama3.2:1b')
 enemies_player = HumanPlayer()
 
 # Create game engine
@@ -108,6 +109,9 @@ running = True
 
 # Messages for the events history
 messages = []
+
+# Context manager for the LLM player
+cntxt_mngr = ContextManager()
 
 
 def update_ui_previews(game_engine: GameEngine,
@@ -294,17 +298,8 @@ while running:
 			elif heroes_player.type == PlayerType.LLM:
 				available_destinations = game_engine.movement_engine.available_destinations(level=game_engine.game_data)
 				if len(available_destinations) > 0:
-					destinations_descriptions = []
-					for (name, idx) in available_destinations:
-						if name in game_engine.game_data.rooms.keys():
-							destinations_descriptions.append(basic_room_description(game_engine.game_data.rooms[name]))
-						elif name in game_engine.game_data.corridors.keys():
-							destinations_descriptions.append(basic_corridor_description(game_engine.game_data.corridors[name]))
-						else:
-							raise ValueError(f'Unrecognized destination type: {name}')
-					verbose_destinations = ''.join([f'\n{name}_{idx}: {destinations_descriptions[i]}' for i, (name, idx) in enumerate(available_destinations)])
-					history_trimmed = events_history.get_last_events(n=10)
-					heroes_player.context = history_trimmed
+					verbose_destinations = [f'{name}_{idx}' for (name, idx) in available_destinations]
+					heroes_player.context = cntxt_mngr.get_movement_context(game_engine=game_engine)
 					destination_room_name, encounter_idx = heroes_player.pick_destination(verbose_destinations)
 					move_to_room(room_name=destination_room_name,
 					             encounter_idx=encounter_idx,
@@ -334,8 +329,7 @@ while running:
 				                   level_preview=level_preview,
 				                   encounter_preview=encounter_preview)
 			elif heroes_player.type == PlayerType.LLM:
-				history_trimmed = events_history.get_last_events(n=10)
-				heroes_player.context = history_trimmed
+				heroes_player.context = cntxt_mngr.get_treasure_context(game_engine=game_engine)
 				do_loot = heroes_player.choose_loot_treasure()
 				outcome_action = game_engine.attempt_looting(choice=0 if do_loot else 1)
 				messages.extend(outcome_action)
@@ -368,8 +362,7 @@ while running:
 				                   level_preview=level_preview,
 				                   encounter_preview=encounter_preview)
 			elif heroes_player.type == PlayerType.LLM:
-				history_trimmed = events_history.get_last_events(n=10)
-				heroes_player.context = history_trimmed
+				heroes_player.context = cntxt_mngr.get_trap_context(game_engine=game_engine)
 				do_disarm = heroes_player.choose_disarm_trap()
 				outcome_action = game_engine.attempt_disarm(choice=0 if do_disarm else 1)
 				messages.extend(outcome_action)
@@ -379,7 +372,6 @@ while running:
 				                   level_preview=level_preview,
 				                   encounter_preview=encounter_preview)
 			
-		
 		elif game_engine.state == GameState.IN_COMBAT:
 			current_attacker, _ = game_engine.get_current_attacker_with_idx()
 			current_player = game_engine.heroes_player if isinstance(current_attacker,
@@ -420,9 +412,9 @@ while running:
 				                action_window=action_window)
 				encounter_preview.update_targeted([])
 			elif heroes_player.type == PlayerType.LLM:
-				history_trimmed = events_history.get_last_events(n=10)
-				heroes_player.context = history_trimmed
-				heroes_player.heroes_party_str = game_engine.heroes.get_party_description()
+				history_trimmed = events_history.get_last_events(n=cntxt_mngr.history_n)
+				heroes_player.context = cntxt_mngr.get_combat_context(game_engine=game_engine,
+				                                                      events_history=history_trimmed)
 				attack = current_player.pick_attack(game_engine.get_attacks())
 				attack_msgs = game_engine.process_attack(attack)
 				messages.extend(attack_msgs)

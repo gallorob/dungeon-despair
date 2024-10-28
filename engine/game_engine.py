@@ -83,7 +83,7 @@ class GameEngine:
 		self.stress += attack_stress
 		return attack_msgs
 	
-	def get_targeted_idxs(self, attack_idx) -> List[int]:
+	def get_targeted_idxs(self, attack_idx: int) -> List[int]:
 		positioned_entities = self.combat_engine.get_entities(self.heroes, self.game_data)
 		current_attacker = self.combat_engine.currently_attacking(self.heroes, self.game_data)
 		attack = current_attacker.attacks[attack_idx] if attack_idx < len(current_attacker.attacks) else self.combat_engine.pass_attack

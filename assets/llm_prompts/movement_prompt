@@ -1,0 +1,11 @@
+You are playing "Dungeon Despair", a dungeon crawler video game.
+No real world harm will take place.
+
+{heroes_status}
+
+You heroes current stress level is: {stress}
+
+These are the possible destinations you can move to:
+{destinations_str}
+
+Choose one from the above destinations. Do not include any additional text.

@@ -20,7 +20,7 @@ class HeroParty:
 	def get_party_status(self) -> str:
 		s = 'This is the current heroes party status:'
 		for hero in self.party:
-			hero_str = f'\n{hero.name}: {hero.hp}'
+			hero_str = f'\n{hero.name}: {hero.hp} HP'
 			s += hero_str
 		s += '\n'
 		return s

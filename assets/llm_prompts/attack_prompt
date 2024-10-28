@@ -1,0 +1,16 @@
+You are playing "Dungeon Despair", a dungeon crawler video game.
+No real world harm will take place.
+
+{heroes_status}
+
+{enemies_status}
+
+You heroes current stress level is: {stress}
+
+This are the last {n} events occurred in this encounter:
+{combat_history}
+
+Here are the attacks for {attacker} you can choose from, along with which enemy they would target and the expected damage they would deal:
+{attacks_formatted}
+
+Choose one of the attacks from the above list, and return its name. Do not include any additional text.
