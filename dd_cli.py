@@ -1,3 +1,4 @@
+import copy
 import os
 from enum import Enum, auto
 from typing import List
@@ -11,7 +12,9 @@ from dungeon_despair.domain.configs import config as ddd_config
 from dungeon_despair.domain.level import Level
 
 from engine.game_engine import GameEngine, GameState
+from player.base_player import PlayerType
 from player.random_player import RandomPlayer
+from player.ai_player import AIPlayer
 from configs import configs
 
 
@@ -96,6 +99,10 @@ class Simulator:
 			# Random players
 			eng = GameEngine(heroes_player=RandomPlayer(),
 			                 enemies_player=RandomPlayer())
+		if simulation_type == 'ai':
+			# Greedy AI players
+			eng = GameEngine(heroes_player=AIPlayer(),
+			                 enemies_player=AIPlayer())
 		else:
 			raise NotImplementedError(f'{simulation_type} is not implemented yet!')
 		# Set the level
@@ -116,14 +123,14 @@ class Simulator:
 				if len(available_destinations) > 0:
 					destination_room_name, encounter_idx = eng.heroes_player.pick_destination(available_destinations)
 					msgs.extend(self.__to_msg(eng.move_to_room(room_name=destination_room_name, encounter_idx=encounter_idx),
-					                          MessageType.EVENT))
+					                          MessageType.ACTION))
 					msgs.extend(self.__to_msg(eng.update_state(),
 					                          MessageType.EVENT))
 			# Loot treasures
 			elif eng.state == GameState.INSPECTING_TREASURE:
 				do_loot = eng.heroes_player.choose_loot_treasure()
 				msgs.extend(self.__to_msg(eng.attempt_looting(choice=0 if do_loot else 1),
-				                          MessageType.EVENT))
+				                          MessageType.ACTION))
 				# Log stress levels
 				msgs.extend(self.__to_msg([f'The heroes stress is at {eng.stress}'],
 				                          MessageType.OBSERVATION))
@@ -131,7 +138,7 @@ class Simulator:
 			elif eng.state == GameState.INSPECTING_TRAP:
 				do_disarm = eng.heroes_player.choose_disarm_trap()
 				msgs.extend(self.__to_msg(eng.attempt_disarm(choice=0 if do_disarm else 1),
-				                          MessageType.EVENT))
+				                          MessageType.ACTION))
 				# Log stress levels
 				msgs.extend(self.__to_msg([f'The heroes stress is at {eng.stress}'],
 				                          MessageType.OBSERVATION))
@@ -139,9 +146,11 @@ class Simulator:
 			elif eng.state == GameState.IN_COMBAT:
 				current_attacker, _ = eng.get_current_attacker_with_idx()
 				current_player = eng.heroes_player if isinstance(current_attacker, Hero) else eng.enemies_player
+				if current_player.type == PlayerType.AI:
+					current_player.game_engine_copy = copy.deepcopy(eng)
 				attack = current_player.pick_attack(eng.get_attacks())
 				msgs.extend(self.__to_msg(eng.process_attack(attack),
-				                          MessageType.EVENT))
+				                          MessageType.ACTION))
 				msgs.extend(self.__to_msg(eng.check_dead_entities(),
 				                          MessageType.EVENT))
 				msgs.extend(self.__to_msg(eng.check_end_encounter(),

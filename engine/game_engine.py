@@ -8,7 +8,7 @@ from engine.actions_engine import ActionEngine
 from engine.combat_engine import CombatEngine
 from engine.movement_engine import MovementEngine
 from heroes_party import get_temp_heroes, Hero
-from player.base_player import Player
+from player.base_player import Player, PlayerType
 from utils import get_current_encounter
 
 
@@ -69,6 +69,13 @@ class GameEngine:
 		msgs = self.movement_engine.move_to_room(level=self.game_data,
 		                                         dest_room_name=room_name,
 		                                         encounter_idx=encounter_idx)
+		if len(msgs) > 0:  # movement was successful
+			if self.heroes_player.type == PlayerType.AI:
+				area_name = f'{room_name}_{encounter_idx}'
+				if area_name in self.heroes_player.visited_areas.keys():
+					self.heroes_player.visited_areas[area_name] += 1
+				else:
+					self.heroes_player.visited_areas[area_name] = 1
 		return msgs
 		
 	def get_attacks(self) -> List[Attack]:

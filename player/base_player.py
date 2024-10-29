@@ -5,6 +5,7 @@ class PlayerType(Enum):
 	HUMAN: int = auto()
 	RANDOM: int = auto()
 	LLM: int = auto()
+	AI: int = auto()
 
 
 class Player:

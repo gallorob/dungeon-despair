@@ -1,3 +1,4 @@
+import copy
 import os.path
 
 import pygame
@@ -12,6 +13,7 @@ from dungeon_despair.domain.level import Level
 from dungeon_despair.domain.room import Room
 from engine.game_engine import GameEngine, GameState
 from heroes_party import Hero
+from player.ai_player import AIPlayer
 from player.base_player import PlayerType
 from player.human_player import HumanPlayer
 from player.llm_player import LLMPlayer
@@ -83,7 +85,7 @@ game_over_window = GameOver(rect=pygame.Rect(configs.screen_width / 4, configs.s
 game_over_window.hide()
 
 # Set players
-heroes_player = LLMPlayer(model_name='Llama3.2:1b')
+heroes_player = AIPlayer()
 enemies_player = HumanPlayer()
 
 # Create game engine
@@ -222,6 +224,7 @@ def move_to_room(room_name: str,
                  encounter_preview: EncounterPreview):
 	messages.extend(game_engine.move_to_room(room_name=room_name, encounter_idx=encounter_idx))
 	messages.extend(game_engine.update_state())
+	encounter_preview.set_display_title(f'Encounter - {room_name}' + (f' ({encounter_idx})' if encounter_idx != -1 else ''))
 	check_and_start_encounter(game_engine=game_engine,
 	                          level_preview=level_preview,
 	                          encounter_preview=encounter_preview,
@@ -295,11 +298,19 @@ while running:
 					             game_engine=game_engine,
 					             level_preview=level_preview,
 					             encounter_preview=encounter_preview)
+			elif heroes_player.type == PlayerType.AI:
+				available_destinations = game_engine.movement_engine.available_destinations(level=game_engine.game_data)
+				if len(available_destinations) > 0:
+					destination_room_name, encounter_idx = heroes_player.pick_destination(available_destinations)
+					move_to_room(room_name=destination_room_name,
+					             encounter_idx=encounter_idx,
+					             game_engine=game_engine,
+					             level_preview=level_preview,
+					             encounter_preview=encounter_preview)
 			elif heroes_player.type == PlayerType.LLM:
 				available_destinations = game_engine.movement_engine.available_destinations(level=game_engine.game_data)
 				if len(available_destinations) > 0:
 					verbose_destinations = [f'{name}_{idx}' for (name, idx) in available_destinations]
-					heroes_player.context = cntxt_mngr.get_movement_context(game_engine=game_engine)
 					destination_room_name, encounter_idx = heroes_player.pick_destination(verbose_destinations)
 					move_to_room(room_name=destination_room_name,
 					             encounter_idx=encounter_idx,
@@ -321,6 +332,14 @@ while running:
 							                   level_preview=level_preview,
 							                   encounter_preview=encounter_preview)
 			elif heroes_player.type == PlayerType.RANDOM:
+				do_loot = heroes_player.choose_loot_treasure()
+				outcome_action = game_engine.attempt_looting(choice=0 if do_loot else 1)
+				messages.extend(outcome_action)
+				action_window.clear_choices()
+				update_ui_previews(game_engine=game_engine,
+				                   level_preview=level_preview,
+				                   encounter_preview=encounter_preview)
+			elif heroes_player.type == PlayerType.AI:
 				do_loot = heroes_player.choose_loot_treasure()
 				outcome_action = game_engine.attempt_looting(choice=0 if do_loot else 1)
 				messages.extend(outcome_action)
@@ -353,6 +372,15 @@ while running:
 							                   level_preview=level_preview,
 							                   encounter_preview=encounter_preview)
 			elif heroes_player.type == PlayerType.RANDOM:
+				do_disarm = heroes_player.choose_disarm_trap()
+				outcome_action = game_engine.attempt_disarm(choice=0 if do_disarm else 1)
+				messages.extend(outcome_action)
+				game_engine.state = GameState.IDLE
+				action_window.clear_choices()
+				update_ui_previews(game_engine=game_engine,
+				                   level_preview=level_preview,
+				                   encounter_preview=encounter_preview)
+			elif heroes_player.type == PlayerType.AI:
 				do_disarm = heroes_player.choose_disarm_trap()
 				outcome_action = game_engine.attempt_disarm(choice=0 if do_disarm else 1)
 				messages.extend(outcome_action)
@@ -401,7 +429,7 @@ while running:
 					update_targeted(event=event,
 					                encounter_preview=encounter_preview,
 					                action_window=action_window)
-			elif heroes_player.type == PlayerType.RANDOM:  # Random player
+			elif current_player.type == PlayerType.RANDOM:  # Random player
 				attack = current_player.pick_attack(game_engine.get_attacks())
 				attack_msgs = game_engine.process_attack(attack)
 				messages.extend(attack_msgs)
@@ -411,10 +439,21 @@ while running:
 				                encounter_preview=encounter_preview,
 				                action_window=action_window)
 				encounter_preview.update_targeted([])
-			elif heroes_player.type == PlayerType.LLM:
+			elif current_player.type == PlayerType.AI:
+				current_player.game_engine_copy = copy.deepcopy(game_engine)
+				attack = current_player.pick_attack(game_engine.get_attacks())
+				attack_msgs = game_engine.process_attack(attack)
+				messages.extend(attack_msgs)
+				encounter_preview.display_stress_level(game_engine.stress)
+				check_aftermath(game_engine=game_engine,
+				                level_preview=level_preview,
+				                encounter_preview=encounter_preview,
+				                action_window=action_window)
+				encounter_preview.update_targeted([])
+			elif current_player.type == PlayerType.LLM:
 				history_trimmed = events_history.get_last_events(n=cntxt_mngr.history_n)
-				heroes_player.context = cntxt_mngr.get_combat_context(game_engine=game_engine,
-				                                                      events_history=history_trimmed)
+				current_player.context = cntxt_mngr.get_combat_context(game_engine=game_engine,
+				                                                       events_history=history_trimmed)
 				attack = current_player.pick_attack(game_engine.get_attacks())
 				attack_msgs = game_engine.process_attack(attack)
 				messages.extend(attack_msgs)
