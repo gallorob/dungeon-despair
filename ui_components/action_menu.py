@@ -54,7 +54,8 @@ class ActionWindow(UIWindow):
 		starting_height = self.get_container().rect.height / 2 - btn_height
 		
 		for i, (choice, tooltip) in enumerate(zip(['Attempt to disarm', 'Ignore'],
-		                                          ['Try your luck disarming the trap', 'Move on and leave the trap as-is'])):
+		                                          ['Try your luck disarming the trap',
+		                                           'Move on and leave the trap as-is'])):
 			choice_btn = UIButton(text=choice,
 			                      relative_rect=Rect(0,
 			                                         starting_height + (i * btn_height),

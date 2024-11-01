@@ -4,22 +4,20 @@ import os
 from enum import Enum, auto
 from typing import List, Union, Dict, Any
 
+import fire
 from tqdm.auto import tqdm
 
-import fire
-
+from configs import configs
+from dungeon_despair.domain.configs import config as ddd_config
 from dungeon_despair.domain.corridor import Corridor
 from dungeon_despair.domain.encounter import Encounter
 from dungeon_despair.domain.entities.hero import Hero
-from dungeon_despair.domain.configs import config as ddd_config
 from dungeon_despair.domain.level import Level
 from dungeon_despair.domain.room import Room
-
 from engine.game_engine import GameEngine, GameState
+from player.ai_player import AIPlayer
 from player.base_player import PlayerType
 from player.random_player import RandomPlayer
-from player.ai_player import AIPlayer
-from configs import configs
 from utils import get_current_encounter, get_current_room
 
 
@@ -33,7 +31,7 @@ class RunData:
 		
 		self.combat_encounter_desc: str = ''
 		self.combat_encounter_stress_pre: float = 0.0
-		
+	
 	@staticmethod
 	def get_encounter_desc(area: Union[Room, Corridor],
 	                       idx: int,
@@ -51,8 +49,9 @@ class RunData:
 			'encounters_stress_delta': self.encounters_stress_delta,
 			'encounters_desc': self.encounters_desc,
 			'termination_condition': self.termination_condition
-			}
-	
+		}
+
+
 class SimulatorJsonLogger:
 	def __init__(self,
 	             output_filename: str,
@@ -78,12 +77,14 @@ class SimulatorJsonLogger:
 				'configs': self.configs.__dict__,
 				'simulation_type': self.simulation_type,
 				'level': self.level.model_dump_json()
-				}, f)
+			}, f)
+
 
 class MessageType(Enum):
 	ACTION = auto()
 	EVENT = auto()
 	OBSERVATION = auto()
+
 
 class Message:
 	def __init__(self, message_type: MessageType, message: str):
@@ -99,6 +100,7 @@ class Message:
 			return f'OBSERVATION\t{self.message}'
 		else:
 			raise ValueError(f'Unknown message type: {self.type}')
+
 
 class SimulatorLogger:
 	def __init__(self,
@@ -159,10 +161,10 @@ class Simulator:
 		                message_type=msg_type) for msg in strings]
 	
 	def __simulate_scenario(self,
-                            scenario: Level,
-                            simulation_type: str,
+	                        scenario: Level,
+	                        simulation_type: str,
 	                        run_data: RunData,
-                            max_steps: int = 2000) -> List[Message]:
+	                        max_steps: int = 2000) -> List[Message]:
 		msgs = []
 		if simulation_type == 'random':
 			# Random players
@@ -198,8 +200,9 @@ class Simulator:
 				available_destinations = eng.movement_engine.available_destinations(level=eng.game_data)
 				if len(available_destinations) > 0:
 					destination_room_name, encounter_idx = eng.heroes_player.pick_destination(available_destinations)
-					msgs.extend(self.__to_msg(eng.move_to_room(room_name=destination_room_name, encounter_idx=encounter_idx),
-					                          MessageType.ACTION))
+					msgs.extend(
+						self.__to_msg(eng.move_to_room(room_name=destination_room_name, encounter_idx=encounter_idx),
+						              MessageType.ACTION))
 					msgs.extend(self.__to_msg(eng.update_state(),
 					                          MessageType.EVENT))
 			# Loot treasures
@@ -221,7 +224,7 @@ class Simulator:
 					stress_post = eng.stress
 					run_data.encounters_stress_delta.append(stress_post - stress_pre)
 					run_data.encounters_desc.append(encounter_desc)
-				
+			
 			# Disarm traps
 			elif eng.state == GameState.INSPECTING_TRAP:
 				curr_encounter = get_current_encounter(level=eng.game_data,
@@ -241,7 +244,7 @@ class Simulator:
 					stress_post = eng.stress
 					run_data.encounters_stress_delta.append(stress_post - stress_pre)
 					run_data.encounters_desc.append(encounter_desc)
-				
+			
 			# Combat enemies
 			elif eng.state == GameState.IN_COMBAT:
 				if run_data.combat_encounter_desc == '':

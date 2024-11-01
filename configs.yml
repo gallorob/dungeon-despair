@@ -12,6 +12,13 @@ max_traps_per_encounter: 1
 corridor_min_length: 2
 corridor_max_length: 4
 
+trap_disarm_chance: 0.8
+trap_disarm_stress: -20
+trap_dmg_percentage: 0.1
+
+treasure_loot_chance: 0.8
+treasure_loot_stress: -15
+
 entity_scale: 0.35
 minimap_room_scale: 0.15
 minimap_corridor_scale: 0.075

@@ -6,7 +6,6 @@ from dungeon_despair.domain.encounter import Encounter
 from dungeon_despair.domain.entities.enemy import Enemy
 from dungeon_despair.domain.level import Level
 from heroes_party import Hero, HeroParty
-from utils import get_current_encounter
 
 
 # Refer to:
@@ -69,7 +68,7 @@ class CombatEngine:
 		possible_attacks.append(self.pass_attack)
 		attacker_idx = positioned_entities.index(current_attacker)
 		attacker_idx -= 0 if attacker_idx <= len(heroes.party) - 1 else len(heroes.party)
-
+		
 		# disable attacks that cannot be executed
 		for attack in possible_attacks:
 			if attack.name != 'Pass':
@@ -82,13 +81,14 @@ class CombatEngine:
 				target_mask = self.convert_attack_mask(attack.target_positions)
 				if isinstance(current_attacker, Enemy):
 					target_mask = list(reversed(target_mask))
-				targets_n = len(positioned_entities) - len(heroes.party) if positioned_entities.index(current_attacker) <= len(heroes.party) - 1 else len(heroes.party)
+				targets_n = len(positioned_entities) - len(heroes.party) if positioned_entities.index(
+					current_attacker) <= len(heroes.party) - 1 else len(heroes.party)
 				targets = [1 if i < targets_n else 0 for i in range(len(target_mask))]
 				if isinstance(current_attacker, Enemy):
 					targets = list(reversed(targets))
 				target_and = [1 if i == 1 and j == 1 else 0 for i, j in zip(target_mask, targets)]
 				attack.active &= sum(target_and) > 0
-			
+		
 		return possible_attacks
 	
 	def process_attack(self, heroes: HeroParty, game_data: Level, attack_idx: int) -> Tuple[int, List[str]]:
@@ -97,8 +97,9 @@ class CombatEngine:
 		
 		positioned_entities = self.get_entities(heroes, game_data)
 		current_attacker = positioned_entities[self.sorted_entities[self.currently_active]]
-		attack = current_attacker.attacks[attack_idx] if attack_idx < len(current_attacker.attacks) else self.pass_attack
-	
+		attack = current_attacker.attacks[attack_idx] if attack_idx < len(
+			current_attacker.attacks) else self.pass_attack
+		
 		if attack == self.pass_attack:
 			attack_msgs.append(f'<b>{current_attacker.name}</b> passes!')
 			stress += 10 * (1 if isinstance(current_attacker, Hero) else -1)

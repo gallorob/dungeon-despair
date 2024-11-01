@@ -9,6 +9,7 @@ from pygame_gui.elements import UIWindow
 
 from configs import configs
 from context_manager import ContextManager
+from dungeon_despair.domain.configs import config as ddd_config
 from dungeon_despair.domain.level import Level
 from dungeon_despair.domain.room import Room
 from engine.game_engine import GameEngine, GameState
@@ -16,16 +17,12 @@ from heroes_party import Hero
 from player.ai_player import AIPlayer
 from player.base_player import PlayerType
 from player.human_player import HumanPlayer
-from player.llm_player import LLMPlayer
-from player.random_player import RandomPlayer
 from ui_components.action_menu import ActionWindow
 from ui_components.encounter_preview import EncounterPreview
 from ui_components.events_history import EventsHistory
 from ui_components.gameover_window import GameOver
 from ui_components.level_preview import LevelPreview
-from utils import get_current_room, get_current_encounter, rich_entity_description, basic_room_description, \
-	basic_corridor_description
-from dungeon_despair.domain.configs import config as ddd_config
+from utils import get_current_room, get_current_encounter
 
 # clear assets folder on exec
 if os.path.exists(os.path.join(configs.assets, 'dungeon_assets')):
@@ -194,7 +191,7 @@ def check_aftermath(game_engine: GameEngine,
 		messages.extend(msgs)
 		attacker, attacker_idx = game_engine.get_current_attacker_with_idx()
 		encounter_preview.update_attacking(attacker_idx)
-		
+	
 	messages.extend(game_engine.check_gameover())
 	
 	update_ui_actions(game_engine=game_engine,
@@ -224,7 +221,8 @@ def move_to_room(room_name: str,
                  encounter_preview: EncounterPreview):
 	messages.extend(game_engine.move_to_room(room_name=room_name, encounter_idx=encounter_idx))
 	messages.extend(game_engine.update_state())
-	encounter_preview.set_display_title(f'Encounter - {room_name}' + (f' ({encounter_idx})' if encounter_idx != -1 else ''))
+	encounter_preview.set_display_title(
+		f'Encounter - {room_name}' + (f' ({encounter_idx})' if encounter_idx != -1 else ''))
 	check_and_start_encounter(game_engine=game_engine,
 	                          level_preview=level_preview,
 	                          encounter_preview=encounter_preview,
@@ -399,7 +397,7 @@ while running:
 				update_ui_previews(game_engine=game_engine,
 				                   level_preview=level_preview,
 				                   encounter_preview=encounter_preview)
-			
+		
 		elif game_engine.state == GameState.IN_COMBAT:
 			current_attacker, _ = game_engine.get_current_attacker_with_idx()
 			current_player = game_engine.heroes_player if isinstance(current_attacker,

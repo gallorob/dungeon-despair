@@ -2,14 +2,14 @@ import os
 from typing import List, Optional
 
 import pygame
-from dungeon_despair.domain.corridor import Corridor
-from dungeon_despair.domain.encounter import Encounter
-from dungeon_despair.domain.room import Room
 from pygame import Rect
 from pygame_gui.core.interfaces import IUIManagerInterface
 from pygame_gui.elements import UIImage, UILabel, UIWindow
 
 from configs import configs
+from dungeon_despair.domain.corridor import Corridor
+from dungeon_despair.domain.encounter import Encounter
+from dungeon_despair.domain.room import Room
 from heroes_party import HeroParty
 from utils import rich_entity_description
 
@@ -156,12 +156,12 @@ class EncounterPreview(UIWindow):
 		                                       height_diff=1,
 		                                       additional_x_offset=0)
 		# show traps
-		self.traps = __add_and_show_entities(max_n=4,#configs.max_traps_per_encounter,
+		self.traps = __add_and_show_entities(max_n=4,  # configs.max_traps_per_encounter,
 		                                     entity_type='trap',
 		                                     height_diff=1,
 		                                     additional_x_offset=-self.padding)
 		# show treasures
-		self.treasures = __add_and_show_entities(max_n=4,#configs.max_treasures_per_encounter,
+		self.treasures = __add_and_show_entities(max_n=4,  # configs.max_treasures_per_encounter,
 		                                         entity_type='treasure',
 		                                         height_diff=1,
 		                                         additional_x_offset=-self.padding)

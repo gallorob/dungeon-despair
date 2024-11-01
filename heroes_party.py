@@ -1,9 +1,6 @@
-from typing import List
-
-from pydantic import Field
-
 from dungeon_despair.domain.attack import Attack
 from dungeon_despair.domain.entities.hero import Hero
+
 
 class HeroParty:
 	def __init__(self):
@@ -24,7 +21,7 @@ class HeroParty:
 			s += hero_str
 		s += '\n'
 		return s
-		
+
 
 def get_temp_heroes():
 	heroes = HeroParty()

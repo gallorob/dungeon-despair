@@ -1,5 +1,5 @@
 from enum import Enum, auto
-from typing import List, Optional, Tuple, Union
+from typing import List, Tuple, Union
 
 from dungeon_despair.domain.attack import Attack
 from dungeon_despair.domain.entities.enemy import Enemy
@@ -77,7 +77,7 @@ class GameEngine:
 				else:
 					self.heroes_player.visited_areas[area_name] = 1
 		return msgs
-		
+	
 	def get_attacks(self) -> List[Attack]:
 		return self.combat_engine.get_attacks(self.heroes, self.game_data)
 	
@@ -93,14 +93,16 @@ class GameEngine:
 	def get_targeted_idxs(self, attack_idx: int) -> List[int]:
 		positioned_entities = self.combat_engine.get_entities(self.heroes, self.game_data)
 		current_attacker = self.combat_engine.currently_attacking(self.heroes, self.game_data)
-		attack = current_attacker.attacks[attack_idx] if attack_idx < len(current_attacker.attacks) else self.combat_engine.pass_attack
+		attack = current_attacker.attacks[attack_idx] if attack_idx < len(
+			current_attacker.attacks) else self.combat_engine.pass_attack
 		attack_mask = self.combat_engine.convert_attack_mask(attack.target_positions)
 		if isinstance(current_attacker, Enemy):
 			attack_mask = list(reversed(attack_mask))
 		attack_offset = 0 if isinstance(current_attacker, Enemy) else len(self.heroes.party)
-		target_idxs = [i + attack_offset for i in range(min(len(attack_mask), len(positioned_entities) - attack_offset)) if attack_mask[i]]
+		target_idxs = [i + attack_offset for i in range(min(len(attack_mask), len(positioned_entities) - attack_offset))
+		               if attack_mask[i]]
 		return target_idxs
-		
+	
 	def check_dead_entities(self):
 		dead_stress, dead_msgs = self.combat_engine.process_dead_entities(self.heroes, self.game_data)
 		self.stress += dead_stress

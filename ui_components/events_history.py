@@ -13,7 +13,7 @@ class EventsHistory(UIWindow):
 		
 		self.history_display = UITextBox(html_text='Events History<br>',
 		                                 relative_rect=Rect(0, 0, self.get_container().rect.width,
-		                                                   self.get_container().rect.height),
+		                                                    self.get_container().rect.height),
 		                                 manager=self.ui_manager,
 		                                 starting_height=self.starting_height + 1,
 		                                 container=self.get_container())

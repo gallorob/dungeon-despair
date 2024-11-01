@@ -47,10 +47,10 @@ class LevelPreview(UIWindow):
 					if isinstance(room, Room):
 						for other_button, other_area in self._map_areas.items():
 							if isinstance(other_area, Corridor) and other_area.room_from == roomcorridor_name:
-								other_button.text = self.get_encounter_text(other_area.encounters[self._map_idxs[other_button]])
+								other_button.text = self.get_encounter_text(
+									other_area.encounters[self._map_idxs[other_button]])
 								other_button.rebuild()
 					break
-				
 	
 	def create_minimap(self, game_data: Level):
 		if len(self.map) == 0:
@@ -68,16 +68,16 @@ class LevelPreview(UIWindow):
 			room_positions[game_data.current_room] = (start_x, start_y)
 			
 			offsets_directions = {
-				Direction.WEST:  (-1, 0),
+				Direction.WEST: (-1, 0),
 				Direction.EAST: (1, 0),
-				Direction.NORTH:    (0, -1),
-				Direction.SOUTH:  (0, 1)
+				Direction.NORTH: (0, -1),
+				Direction.SOUTH: (0, 1)
 			}
 			correcting_directions = {
-				Direction.WEST:  (0, 1),
+				Direction.WEST: (0, 1),
 				Direction.EAST: (0, 1),
-				Direction.NORTH:    (1, 0),
-				Direction.SOUTH:  (1, 0)
+				Direction.NORTH: (1, 0),
+				Direction.SOUTH: (1, 0)
 			}
 			
 			# Queue to process rooms and their adjacent rooms
@@ -92,7 +92,8 @@ class LevelPreview(UIWindow):
 				
 				room_button = UIButton(
 					relative_rect=pygame.Rect(current_pos, room_button_size),
-					text=self.get_encounter_text(actual_room.encounter) if actual_room.name == game_data.current_room else '?',
+					text=self.get_encounter_text(
+						actual_room.encounter) if actual_room.name == game_data.current_room else '?',
 					tool_tip_text=basic_room_description(actual_room),
 					container=self.get_container(),
 					manager=self.ui_manager,
@@ -113,14 +114,18 @@ class LevelPreview(UIWindow):
 						for corridor in game_data.corridors.values():
 							room_from, room_to = corridor.room_from, corridor.room_to
 							if (room_from == current_room or room_from == adjacent_room) and (
-								room_to == current_room or room_to == adjacent_room):
+									room_to == current_room or room_to == adjacent_room):
 								length = corridor.length
 								for i in range(length):
 									dx += offsets_directions[direction][0] * corridor_button_size[0]
 									dy += offsets_directions[direction][1] * corridor_button_size[1]
 									corridor_button = pygame_gui.elements.UIButton(
-										relative_rect=pygame.Rect((current_pos[0] + dx + correcting_directions[direction][0] * corridor_room_difference[0],
-										                           current_pos[1] + dy + correcting_directions[direction][1] * corridor_room_difference[1]),
+										relative_rect=pygame.Rect((current_pos[0] + dx +
+										                           correcting_directions[direction][0] *
+										                           corridor_room_difference[0],
+										                           current_pos[1] + dy +
+										                           correcting_directions[direction][1] *
+										                           corridor_room_difference[1]),
 										                          corridor_button_size),
 										text='?',
 										tool_tip_text=f"{room_from} - {room_to} ({i})",
@@ -134,8 +139,9 @@ class LevelPreview(UIWindow):
 						# Calculate position of the adjacent room
 						ddx, ddy = (-room_button_size[0] / 2 if direction == Direction.EAST else 0,
 						            -room_button_size[1] / 2 if direction == Direction.SOUTH else 0)
-						adjacent_pos = (current_pos[0] + dx + offsets_directions[direction][0] * room_button_size[0] + ddx,
-						                current_pos[1] + dy + offsets_directions[direction][1] * room_button_size[1] + ddy)
+						adjacent_pos = (
+						current_pos[0] + dx + offsets_directions[direction][0] * room_button_size[0] + ddx,
+						current_pos[1] + dy + offsets_directions[direction][1] * room_button_size[1] + ddy)
 						room_positions[adjacent_room] = adjacent_pos
 						queue.append(adjacent_room)
 				
