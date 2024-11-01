@@ -1,10 +1,12 @@
 import copy
 from typing import List, Tuple, Optional
 
+import numpy as np
+
 from dungeon_despair.domain.entities.hero import Hero
 from engine.game_engine import GameEngine
 from player.base_player import Player, PlayerType
-import numpy as np
+
 
 class AIPlayer(Player):
 	def __init__(self):

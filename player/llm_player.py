@@ -1,8 +1,10 @@
 from typing import Dict, List, Optional, Union
 
+import ollama
+
 from context_manager import CombatContext, TreasureContext, MovementContext, TrapContext
 from player.base_player import Player, PlayerType
-import ollama
+
 
 class LLMPlayer(Player):
 	def __init__(self,
@@ -25,7 +27,7 @@ class LLMPlayer(Player):
 		                     messages=msgs)
 		response = output['message']['content']
 		return response
-		
+	
 	def pick_attack(self,
 	                attacks) -> int:
 		attacks_names = [attack.name for attack in attacks]
@@ -39,7 +41,7 @@ class LLMPlayer(Player):
 				for target, dmg in zip(targets, dmgs):
 					dmgs_formatted.append(f'{dmg} damage to {target}')
 				attacks_formatted += ', '.join(dmgs_formatted) + '\n'
-		prompt_copy = self.attack_prompt.format(heroes_status = self.context.heroes_status,
+		prompt_copy = self.attack_prompt.format(heroes_status=self.context.heroes_status,
 		                                        enemies_status=self.context.enemies_status,
 		                                        stress=self.context.stress,
 		                                        n=len(self.context.combat_history),
@@ -58,7 +60,8 @@ class LLMPlayer(Player):
 	def pick_destination(self,
 	                     destinations):
 		destinations_str = ''
-		for destination, description, enc_descs in zip(self.context.destinations, self.context.descriptions, self.context.encounters_desc):
+		for destination, description, enc_descs in zip(self.context.destinations, self.context.descriptions,
+		                                               self.context.encounters_desc):
 			destinations_str += f' - "{destination}": {description} ('
 			destinations_str += ', '.join(enc_descs) + ')\n'
 		
@@ -77,8 +80,8 @@ class LLMPlayer(Player):
 	def choose_disarm_trap(self) -> bool:
 		prompt_copy = self.trap_prompt.format(heroes_status=self.context.heroes_status,
 		                                      stress=self.context.stress,
-	                                          trap_description=self.context.desc,
-	                                          disarming_outcome=self.context.outcome)
+		                                      trap_description=self.context.desc,
+		                                      disarming_outcome=self.context.outcome)
 		messages = [{'role': 'user', 'content': prompt_copy}]
 		response = self.__chat(messages)
 		# print(f'LLMPlayer.choose_disarm_trap - {response=}')

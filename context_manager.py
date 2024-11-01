@@ -36,7 +36,6 @@ class MovementContext:
 	destinations: List[str]
 	descriptions: List[str]
 	encounters_desc: List[List[str]]
-	
 
 
 class ContextManager:
@@ -101,7 +100,7 @@ class ContextManager:
 		context.desc = f'{treasure.name}: {treasure.description} (loot: {treasure.loot})'
 		context.outcome = f'Successfully looting this treasure will reduce stress by -15 point. Failing to do so will increase the stress by 15 points.'  # TODO: From config
 		return context
-		
+	
 	def get_trap_context(self,
 	                     game_engine: GameEngine) -> TrapContext:
 		curr_encounter = get_current_encounter(level=game_engine.game_data,
@@ -133,7 +132,7 @@ class ContextManager:
 		else:
 			desc += 'There does not seem to be any treasures nearby.'
 		return desc
-		
+	
 	def get_movement_context(self,
 	                         game_engine: GameEngine) -> MovementContext:
 		context = MovementContext()
@@ -148,7 +147,8 @@ class ContextManager:
 				context.encounters_desc.append([ContextManager.__get_encounter_description(area.encounter)])
 			elif name in game_engine.game_data.corridors.keys():
 				area = game_engine.game_data.corridors[name]
-				context.encounters_desc.append([ContextManager.__get_encounter_description(encounter) for encounter in area.encounters])
+				context.encounters_desc.append(
+					[ContextManager.__get_encounter_description(encounter) for encounter in area.encounters])
 			else:
 				raise ValueError(f'Unrecognized destination type: {name}')
 			context.destinations.append(f'{name}_{idx}')

@@ -1,5 +1,7 @@
 import pygame
 from PIL import Image
+from pygame import Surface
+
 from dungeon_despair.domain.attack import Attack
 from dungeon_despair.domain.corridor import Corridor
 from dungeon_despair.domain.entities.enemy import Enemy
@@ -8,8 +10,6 @@ from dungeon_despair.domain.entities.trap import Trap
 from dungeon_despair.domain.entities.treasure import Treasure
 from dungeon_despair.domain.level import Level
 from dungeon_despair.domain.room import Room
-from pygame import Surface
-
 from heroes_party import Hero
 
 
