@@ -40,7 +40,7 @@ class CombatEngine:
 	
 	def sort_entities(self, entities: List[Union[Hero, Enemy]]) -> List[int]:
 		# Turn order is determined semi-randomly: 1d10+Speed.
-		modified_speed = [entity.spd + random.randint(1, 10) for entity in entities]
+		modified_speed = [(entity.spd * 10) + random.randint(1, 10) for entity in entities]
 		sorted_entities = [i for i, _ in sorted(enumerate(modified_speed), key=lambda x: x[1])]
 		return sorted_entities
 	
