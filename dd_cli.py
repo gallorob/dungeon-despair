@@ -41,7 +41,7 @@ class RunData:
 	                       encounter_type: str) -> str:
 		idx = f' ({idx})' if idx != -1 else ''
 		relevant_entities = ', '.join([x.name for x in encounter.entities[encounter_type]])
-		desc = f'Encounter {area.name}{idx} - {relevant_entities}'
+		desc = f'Encounter {area.name}{idx} {encounter_type} - {relevant_entities}'
 		return desc
 	
 	def info(self) -> Dict[str, Any]:
@@ -255,7 +255,7 @@ class Simulator:
 				current_attacker, _ = eng.get_current_attacker_with_idx()
 				current_player = eng.heroes_player if isinstance(current_attacker, Hero) else eng.enemies_player
 				if current_player.type == PlayerType.AI:
-					current_player.game_engine_copy = copy.deepcopy(eng)
+					current_player.game_engine_copy = eng
 				attack = current_player.pick_attack(eng.get_attacks())
 				msgs.extend(self.__to_msg(eng.process_attack(attack),
 				                          MessageType.ACTION))
