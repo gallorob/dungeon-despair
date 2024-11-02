@@ -3,6 +3,9 @@ from typing import Dict, List, Optional, Union
 import ollama
 
 from context_manager import CombatContext, TreasureContext, MovementContext, TrapContext
+from dungeon_despair.domain.entities.enemy import Enemy
+from dungeon_despair.domain.entities.entity import Entity
+from dungeon_despair.domain.entities.hero import Hero
 from player.base_player import Player, PlayerType
 
 
@@ -56,6 +59,12 @@ class LLMPlayer(Player):
 				self.context = None
 				return idx
 		raise ValueError(f'LLMPlayer.pick_attack - invalid response: {response}')
+	
+	def pick_moving(self,
+	                attacker: Entity,
+	                heroes: List[Hero],
+	                enemies: List[Enemy]) -> int:
+		raise NotImplementedError(f'LLMPlayer can\'t pick movement!')
 	
 	def pick_destination(self,
 	                     destinations):

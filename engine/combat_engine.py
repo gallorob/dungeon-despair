@@ -32,7 +32,7 @@ class CombatEngine:
 			       target_positions='OOOO',
 			       base_dmg=0),
 			Attack(name='Move',
-			       description='Move to another hero\' position.',
+			       description='Move to another hero\'s position.',
 			       starting_positions='XXXX',
 			       target_positions='OOOO',
 			       base_dmg=0)
@@ -71,8 +71,6 @@ class CombatEngine:
 		return [1 if x == 'X' else 0 for x in mask]
 	
 	def currently_attacking(self, heroes: HeroParty, game_data: Level) -> Union[Hero, Enemy]:
-		# positioned_entities = self.get_entities(heroes, game_data)
-		# current_attacker = positioned_entities[self.sorted_entities[self.currently_active]]
 		current_attacker = self.sorted_entities[self.currently_active]
 		return current_attacker
 	
@@ -195,11 +193,5 @@ class CombatEngine:
 				self.current_encounter.entities.get('enemy', []).pop(j)
 			else:
 				heroes.party.pop(i)
-			# self.sorted_entities.pop(i)
-		
-		# for i in reversed(dead_entities):
-		# 	for j, v in enumerate(self.sorted_entities):
-		# 		if v > i:
-		# 			self.sorted_entities[j] = v - 1
 		
 		return stress, messages

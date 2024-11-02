@@ -3,9 +3,14 @@ from typing import List, Tuple, Optional
 
 import numpy as np
 
+from dungeon_despair.domain.entities.enemy import Enemy
+from dungeon_despair.domain.entities.entity import Entity
 from dungeon_despair.domain.entities.hero import Hero
 from engine.game_engine import GameEngine
 from player.base_player import Player, PlayerType
+
+
+# TODO: Adding a simulation depth would allows heroes to move "tactfully"
 
 
 class AIPlayer(Player):
@@ -28,6 +33,17 @@ class AIPlayer(Player):
 			stress_diffs.append(mult * (new_stress - curr_stress))
 		# print(f'AIPlayer.pick_attack - attacks={[attack.name for attack in attacks]} {stress_diffs=} - Picked: {attacks[stress_diffs.index(max(stress_diffs))].name}')
 		return stress_diffs.index(max(stress_diffs))
+	
+	def pick_moving(self,
+	                attacker: Entity,
+	                heroes: List[Hero],
+	                enemies: List[Enemy]) -> int:
+		if isinstance(attacker, Hero):
+			idx = np.random.choice(range(len(heroes)))
+			return idx
+		else:
+			idx = np.random.choice(range(len(enemies)))
+			return idx + len(heroes)
 	
 	def pick_destination(self,
 	                     destinations: List[Tuple[str, int]]) -> Tuple[str, int]:

@@ -407,26 +407,44 @@ while running:
 				                   encounter_preview=encounter_preview)
 		
 		elif game_engine.state == GameState.IN_COMBAT and game_engine.combat_engine.state == CombatPhase.CHOOSE_POSITION:
-			if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-				sprite_idx = encounter_preview.check_clicked_entity(event.pos)
-				if sprite_idx is not None:
-					move_msgs = game_engine.process_move(idx=sprite_idx)
-					messages.extend(move_msgs)
-					encounter_preview.display_stress_level(game_engine.stress)
-					check_aftermath(game_engine=game_engine,
-					                level_preview=level_preview,
-					                encounter_preview=encounter_preview,
-					                action_window=action_window)
-					if game_engine.state == GameState.IN_COMBAT:
-						update_targeted(event=event,
+			current_attacker, _ = game_engine.get_current_attacker_with_idx()
+			current_player = game_engine.heroes_player if isinstance(current_attacker,
+			                                                         Hero) else game_engine.enemies_player
+			if current_player.type == PlayerType.HUMAN:
+				if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+					sprite_idx = encounter_preview.check_clicked_entity(event.pos)
+					if sprite_idx is not None:
+						move_msgs = game_engine.process_move(idx=sprite_idx)
+						messages.extend(move_msgs)
+						encounter_preview.display_stress_level(game_engine.stress)
+						check_aftermath(game_engine=game_engine,
+						                level_preview=level_preview,
 						                encounter_preview=encounter_preview,
 						                action_window=action_window)
-						encounter_preview.moving_to.kill()
-			# Moving mouse events
-			elif event.type == pygame.MOUSEMOTION:
-				# Display targeted entities when hovering over attacks
-				update_moving_to(event=event,
-				                 encounter_preview=encounter_preview)
+						if game_engine.state == GameState.IN_COMBAT:
+							update_targeted(event=event,
+							                encounter_preview=encounter_preview,
+							                action_window=action_window)
+							encounter_preview.moving_to.kill()
+				# Moving mouse events
+				elif event.type == pygame.MOUSEMOTION:
+					# Display targeted entities when hovering over attacks
+					update_moving_to(event=event,
+					                 encounter_preview=encounter_preview)
+			elif current_player.type == PlayerType.RANDOM:
+				idx = current_player.pick_moving(attacker=current_attacker, heroes=game_engine.heroes.party, enemies=game_engine.combat_engine.current_encounter.get['enemy'])
+				move_msgs = game_engine.process_move(idx=idx)
+				messages.extend(move_msgs)
+				encounter_preview.display_stress_level(game_engine.stress)
+			elif current_player.type == PlayerType.AI:
+				current_player.game_engine_copy = copy.deepcopy(game_engine)
+				idx = current_player.pick_moving(attacker=current_attacker, heroes=game_engine.heroes.party, enemies=game_engine.combat_engine.current_encounter.get['enemy'])
+				move_msgs = game_engine.process_move(idx=idx)
+				messages.extend(move_msgs)
+				encounter_preview.display_stress_level(game_engine.stress)
+				
+			elif current_player.type == PlayerType.LLM:
+				raise NotImplementedError(f'LLMPlayer cannot choose to move attackers yet.')
 		
 		elif game_engine.state == GameState.IN_COMBAT and game_engine.combat_engine.state == CombatPhase.PICK_ATTACK:
 			current_attacker, _ = game_engine.get_current_attacker_with_idx()

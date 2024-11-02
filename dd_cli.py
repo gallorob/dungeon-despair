@@ -14,6 +14,7 @@ from dungeon_despair.domain.encounter import Encounter
 from dungeon_despair.domain.entities.hero import Hero
 from dungeon_despair.domain.level import Level
 from dungeon_despair.domain.room import Room
+from engine.combat_engine import CombatPhase
 from engine.game_engine import GameEngine, GameState
 from player.ai_player import AIPlayer
 from player.base_player import PlayerType
@@ -245,8 +246,22 @@ class Simulator:
 					run_data.encounters_stress_delta.append(stress_post - stress_pre)
 					run_data.encounters_desc.append(encounter_desc)
 			
+			elif eng.state == GameState.IN_COMBAT and eng.combat_engine.state == CombatPhase.CHOOSE_POSITION:
+				curr_encounter = get_current_encounter(level=eng.game_data,
+				                                       encounter_idx=eng.movement_engine.encounter_idx)
+				current_attacker, _ = eng.get_current_attacker_with_idx()
+				current_player = eng.heroes_player if isinstance(current_attacker, Hero) else eng.enemies_player
+				if current_player.type == PlayerType.AI:
+					current_player.game_engine_copy = eng
+				idx = current_player.pick_moving(attacker=current_attacker,
+				                                 heroes=eng.heroes.party,
+				                                 enemies=curr_encounter.entities['enemy'])
+				msgs.extend(self.__to_msg(eng.process_move(idx),
+				                          MessageType.ACTION))
+				msgs.extend(self.__to_msg([f'The heroes stress is at {eng.stress}'],
+				                          MessageType.OBSERVATION))
 			# Combat enemies
-			elif eng.state == GameState.IN_COMBAT:
+			elif eng.state == GameState.IN_COMBAT and eng.combat_engine.state == CombatPhase.PICK_ATTACK:
 				if run_data.combat_encounter_desc == '':
 					curr_encounter = get_current_encounter(level=eng.game_data,
 					                                       encounter_idx=eng.movement_engine.encounter_idx)
@@ -270,7 +285,7 @@ class Simulator:
 				msgs.extend(self.__to_msg([f'The heroes stress is at {eng.stress}'],
 				                          MessageType.OBSERVATION))
 				# Set new turn
-				if eng.state == GameState.IN_COMBAT:
+				if eng.state == GameState.IN_COMBAT and eng.combat_engine.state == CombatPhase.PICK_ATTACK:
 					msgs.extend(self.__to_msg(eng.next_turn(),
 					                          MessageType.EVENT))
 			# Check for gameover at end of every step
