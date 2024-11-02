@@ -29,6 +29,7 @@ class EncounterPreview(UIWindow):
 		self.heroes: List[UIImage] = []
 		self.attacking: Optional[UIImage] = None
 		self.targeted: List[UIImage] = []
+		self.moving_to: UIImage = None
 	
 	def display_stress_level(self, stress: int):
 		if self.stress_level is None:
@@ -223,7 +224,7 @@ class EncounterPreview(UIWindow):
 					ref_sprite.relative_rect.x + ref_sprite.relative_rect.width / 2 - self.padding / 4,
 					0,
 					self.padding / 2, self.padding / 2),
-				image_surface=pygame.image.load('assets/targeting_icon.png'),
+				image_surface=pygame.image.load('assets/targeted_icon.png'),
 				manager=self.ui_manager, container=self.get_container(),
 				parent_element=self, anchors={
 					'centery': 'centery'
@@ -232,3 +233,27 @@ class EncounterPreview(UIWindow):
 	
 	def update(self, time_delta: float):
 		super().update(time_delta)
+	
+	def check_clicked_entity(self, pos):
+		for i, sprite in enumerate([*self.heroes, *self.enemies]):
+			if sprite.rect.collidepoint(pos):
+				return i
+		return None
+	
+	def update_moving_to(self, sprite_idx):
+		if self.moving_to:
+			self.moving_to.kill()
+		
+		ref_sprite = [*self.heroes, *self.enemies][sprite_idx]
+		self.moving_to = UIImage(
+			relative_rect=Rect(
+				ref_sprite.relative_rect.x + ref_sprite.relative_rect.width / 2 - self.padding / 4,
+				0,
+				self.padding / 2, self.padding / 2),
+			image_surface=pygame.image.load('assets/moving_icon.png'),
+			manager=self.ui_manager, container=self.get_container(),
+			parent_element=self, anchors={
+				'centery': 'centery'
+			}, starting_height=self.starting_height + 1
+		)
+		

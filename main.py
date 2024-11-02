@@ -12,6 +12,7 @@ from context_manager import ContextManager
 from dungeon_despair.domain.configs import config as ddd_config
 from dungeon_despair.domain.level import Level
 from dungeon_despair.domain.room import Room
+from engine.combat_engine import CombatPhase
 from engine.game_engine import GameEngine, GameState
 from heroes_party import Hero
 from player.ai_player import AIPlayer
@@ -186,7 +187,7 @@ def check_aftermath(game_engine: GameEngine,
 		                                                       encounter_idx=game_engine.movement_engine.encounter_idx),
 		                                 get_current_room(level=game_engine.game_data).name,
 		                                 encounter_idx=game_engine.movement_engine.encounter_idx)
-	elif game_engine.state == GameState.IN_COMBAT:
+	elif game_engine.state == GameState.IN_COMBAT and game_engine.combat_engine.state == CombatPhase.PICK_ATTACK:
 		msgs = game_engine.next_turn()
 		messages.extend(msgs)
 		attacker, attacker_idx = game_engine.get_current_attacker_with_idx()
@@ -212,6 +213,13 @@ def update_targeted(event,
 	else:
 		idxs = []
 	encounter_preview.update_targeted(idxs)
+
+
+def update_moving_to(event,
+                     encounter_preview: EncounterPreview):
+	sprite_idx = encounter_preview.check_clicked_entity(event.pos)
+	if sprite_idx is not None:
+		encounter_preview.update_moving_to(sprite_idx)
 
 
 def move_to_room(room_name: str,
@@ -398,7 +406,29 @@ while running:
 				                   level_preview=level_preview,
 				                   encounter_preview=encounter_preview)
 		
-		elif game_engine.state == GameState.IN_COMBAT:
+		elif game_engine.state == GameState.IN_COMBAT and game_engine.combat_engine.state == CombatPhase.CHOOSE_POSITION:
+			if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+				sprite_idx = encounter_preview.check_clicked_entity(event.pos)
+				if sprite_idx is not None:
+					move_msgs = game_engine.process_move(idx=sprite_idx)
+					messages.extend(move_msgs)
+					encounter_preview.display_stress_level(game_engine.stress)
+					check_aftermath(game_engine=game_engine,
+					                level_preview=level_preview,
+					                encounter_preview=encounter_preview,
+					                action_window=action_window)
+					if game_engine.state == GameState.IN_COMBAT:
+						update_targeted(event=event,
+						                encounter_preview=encounter_preview,
+						                action_window=action_window)
+						encounter_preview.moving_to.kill()
+			# Moving mouse events
+			elif event.type == pygame.MOUSEMOTION:
+				# Display targeted entities when hovering over attacks
+				update_moving_to(event=event,
+				                 encounter_preview=encounter_preview)
+		
+		elif game_engine.state == GameState.IN_COMBAT and game_engine.combat_engine.state == CombatPhase.PICK_ATTACK:
 			current_attacker, _ = game_engine.get_current_attacker_with_idx()
 			current_player = game_engine.heroes_player if isinstance(current_attacker,
 			                                                         Hero) else game_engine.enemies_player

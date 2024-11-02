@@ -94,7 +94,7 @@ class GameEngine:
 		positioned_entities = self.combat_engine.get_entities(self.heroes, self.game_data)
 		current_attacker = self.combat_engine.currently_attacking(self.heroes, self.game_data)
 		attack = current_attacker.attacks[attack_idx] if attack_idx < len(
-			current_attacker.attacks) else self.combat_engine.pass_attack
+			current_attacker.attacks) else self.combat_engine.extra_actions[attack_idx - len(current_attacker.attacks)]
 		attack_mask = self.combat_engine.convert_attack_mask(attack.target_positions)
 		if isinstance(current_attacker, Enemy):
 			attack_mask = list(reversed(attack_mask))
@@ -170,4 +170,11 @@ class GameEngine:
 		else:
 			msgs = ['You ignore the trap... For now.']
 		self.state = GameState.IDLE
+		return msgs
+	
+	def process_move(self, idx):
+		diff_stress, msgs = self.combat_engine.process_move(heroes=self.heroes,
+		                                                    game_data=self.game_data,
+		                                                    idx=idx)
+		self.stress += diff_stress
 		return msgs
