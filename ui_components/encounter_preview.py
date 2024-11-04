@@ -219,10 +219,12 @@ class EncounterPreview(UIWindow):
 		
 		for idx in idxs:
 			ref_sprite = [*self.heroes, *self.enemies][idx]
+			# not sure why the +1, but it works this way :/
+			attacking_x = int(self.attacking.rect.x - ref_sprite.relative_rect.width / 2 + self.padding / 4) + 1
 			self.targeted.append(UIImage(
 				relative_rect=Rect(
 					ref_sprite.relative_rect.x + ref_sprite.relative_rect.width / 2 - self.padding / 4,
-					0 if self.attacking.relative_rect.x != ref_sprite.relative_rect.x else self.padding / 2,
+					0 if (attacking_x != ref_sprite.rect.x) else - self.padding / 2,
 					self.padding / 2, self.padding / 2),
 				image_surface=pygame.image.load('assets/targeted_icon.png'),
 				manager=self.ui_manager, container=self.get_container(),
@@ -245,10 +247,13 @@ class EncounterPreview(UIWindow):
 			self.moving_to.kill()
 		
 		ref_sprite = [*self.heroes, *self.enemies][sprite_idx]
+		# not sure why the +1, but it works this way :/
+		attacking_x = int(self.attacking.rect.x - ref_sprite.relative_rect.width / 2 + self.padding / 4) + 1
+		
 		self.moving_to = UIImage(
 			relative_rect=Rect(
 				ref_sprite.relative_rect.x + ref_sprite.relative_rect.width / 2 - self.padding / 4,
-				0,
+				0 if (attacking_x != ref_sprite.rect.x) else - self.padding / 2,
 				self.padding / 2, self.padding / 2),
 			image_surface=pygame.image.load('assets/moving_icon.png'),
 			manager=self.ui_manager, container=self.get_container(),
