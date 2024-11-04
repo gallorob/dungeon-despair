@@ -150,13 +150,17 @@ class CombatEngine:
 				for i in range(min(len(attack_mask), len(positioned_entities) - attack_offset)):
 					if attack_mask[i]:
 						target_entity = positioned_entities[attack_offset + i]
-						# TODO: Add accuracy and dodge mechanic calculations
-						dmg_taken = int(base_dmg * (1 - target_entity.prot)) * attack_mask[i]
-						target_entity.hp -= dmg_taken
-						action_msgs.append(
-							f'<b>{current_attacker.name}</b>: {attack.description} <i>{dmg_taken}</i> damage dealt to <b>{target_entity.name}</b>!')
-						
-						stress += dmg_taken * (-1 if isinstance(current_attacker, Hero) else 1)
+						do_hit = 1 if random.random() < max(0.0, (attack.accuracy * 2) - target_entity.dodge) else 0
+						if do_hit:
+							dmg_taken = int(base_dmg * (1 - target_entity.prot))
+							target_entity.hp -= dmg_taken
+							action_msgs.append(
+								f'<b>{current_attacker.name}</b>: {attack.description} <i>{dmg_taken}</i> damage dealt to <b>{target_entity.name}</b>!')
+							stress += int(dmg_taken * (-1 if isinstance(current_attacker, Hero) else 1))
+						else:
+							action_msgs.append(
+								f'<b>{current_attacker.name}</b>: {attack.description} but misses!')
+							stress += int(10 * (-1 if isinstance(current_attacker, Enemy) else 1))
 			elif attack_type == AttackType.HEAL:
 				heal = -attack.base_dmg
 				heal_mask = self.convert_attack_mask(attack.target_positions)
@@ -169,7 +173,7 @@ class CombatEngine:
 						target_entity = positioned_entities[heal_offset + i]
 						target_entity.hp += heal
 						action_msgs.append(f'<b>{current_attacker.name}</b>: {attack.description} <i>{heal}</i> heals <b>{target_entity.name}</b>!')
-						stress -= heal * (1 if isinstance(current_attacker, Hero) else -1)
+						stress -= int(heal * (1 if isinstance(current_attacker, Hero) else -1))
 			else:
 				raise NotImplementedError(f'Unknown attack type: {attack_type.value}.')
 			
