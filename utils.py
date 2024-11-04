@@ -10,6 +10,7 @@ from dungeon_despair.domain.entities.trap import Trap
 from dungeon_despair.domain.entities.treasure import Treasure
 from dungeon_despair.domain.level import Level
 from dungeon_despair.domain.room import Room
+from dungeon_despair.domain.utils import get_enum_by_value, AttackType
 from heroes_party import Hero
 
 
@@ -46,7 +47,7 @@ def rich_entity_description(entity: Entity) -> str:
 	rich_description += f'<br><i>{entity.description}</i>'
 	
 	if isinstance(entity, Enemy) or isinstance(entity, Hero):
-		rich_description += f'Species: {entity.species}  HP:{entity.hp}  DODGE:{entity.dodge:.2f}  PROT:{entity.prot:.2f}  SPD:{entity.spd:.2f}'
+		rich_description += f'Species: {entity.species}  HP:{entity.hp}  DODGE:{entity.dodge:.2%}  PROT:{entity.prot:.2f}  SPD:{entity.spd:.2f}'
 	elif isinstance(entity, Treasure):
 		rich_description += f'<p>Loot: {entity.loot}</p>'
 	elif isinstance(entity, Trap):
@@ -56,4 +57,14 @@ def rich_entity_description(entity: Entity) -> str:
 
 
 def rich_attack_description(attack: Attack) -> str:
-	return f'<b>{attack.name}</b>:  <i>{attack.description}</i> (DMG: {attack.base_dmg} FROM: {attack.starting_positions} TO: {attack.target_positions})'
+	attack_type = get_enum_by_value(AttackType, attack.type)
+	if attack_type == AttackType.MOVE:
+		return f'<b>Move</b>: <i>Move to another position within the group.</i>'
+	elif attack_type == AttackType.PASS:
+		return f'<b>Pass</b>: <i>Skip the current turn.</i>'
+	elif attack_type == AttackType.DAMAGE:
+		return f'<b>{attack.name}</b>:  <i>{attack.description}</i> (DMG: {attack.base_dmg} {attack.accuracy:.2%} FROM: {attack.starting_positions} TO: {attack.target_positions})'
+	elif attack_type == AttackType.HEAL:
+		return f'<b>{attack.name}</b>:  <i>{attack.description}</i> (HEAL: {attack.base_dmg} FROM: {attack.starting_positions} TO: {attack.target_positions})'
+	else:
+		raise NotImplementedError(f'Unknown attack type: {attack.type}')

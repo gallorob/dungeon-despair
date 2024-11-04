@@ -222,7 +222,7 @@ class EncounterPreview(UIWindow):
 			self.targeted.append(UIImage(
 				relative_rect=Rect(
 					ref_sprite.relative_rect.x + ref_sprite.relative_rect.width / 2 - self.padding / 4,
-					0,
+					0 if self.attacking.relative_rect.x != ref_sprite.relative_rect.x else self.padding / 2,
 					self.padding / 2, self.padding / 2),
 				image_surface=pygame.image.load('assets/targeted_icon.png'),
 				manager=self.ui_manager, container=self.get_container(),

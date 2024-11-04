@@ -6,6 +6,7 @@ from dungeon_despair.domain.attack import Attack
 from dungeon_despair.domain.encounter import Encounter
 from dungeon_despair.domain.entities.enemy import Enemy
 from dungeon_despair.domain.level import Level
+from dungeon_despair.domain.utils import AttackType, get_enum_by_value
 from heroes_party import Hero, HeroParty
 
 # Refer to:
@@ -28,14 +29,16 @@ class CombatEngine:
 		self.extra_actions = [
 			Attack(name='Pass',
 			       description='Pass the current turn.',
+			       type=AttackType.PASS,
 			       starting_positions='XXXX',
 			       target_positions='OOOO',
-			       base_dmg=0),
+			       base_dmg=0, accuracy=0.0),
 			Attack(name='Move',
 			       description='Move to another hero\'s position.',
+			       type=AttackType.MOVE,
 			       starting_positions='XXXX',
 			       target_positions='OOOO',
-			       base_dmg=0)
+			       base_dmg=0, accuracy=0.0)
 		]
 		
 		self.state = CombatPhase.PICK_ATTACK
@@ -85,13 +88,14 @@ class CombatEngine:
 		
 		# disable attacks that cannot be executed
 		for attack in possible_attacks:
-			if attack.name == 'Move':
+			attack_type = get_enum_by_value(AttackType, attack.type)
+			if attack_type == AttackType.MOVE:
 				# Move should be disabled if there are no other entities to change place with
 				if isinstance(current_attacker, Hero):
 					attack.active = len(heroes.party) > 1
 				else:
 					attack.active = len(self.current_encounter.entities['enemy']) > 1
-			elif attack.name != 'Pass':
+			elif attack_type != AttackType.PASS:
 				# Disable attacks that cannot be executed from the current attacker position
 				attack_mask = self.convert_attack_mask(attack.starting_positions)
 				if isinstance(current_attacker, Hero):
@@ -99,13 +103,21 @@ class CombatEngine:
 				attack.active = attack_mask[attacker_idx] == 1
 				# Disable attacks that do not have a target in a valid position
 				target_mask = self.convert_attack_mask(attack.target_positions)
-				if isinstance(current_attacker, Enemy):
-					target_mask = list(reversed(target_mask))
-				targets_n = len(positioned_entities) - len(heroes.party) if positioned_entities.index(
-					current_attacker) <= len(heroes.party) - 1 else len(heroes.party)
-				targets = [1 if i < targets_n else 0 for i in range(len(target_mask))]
-				if isinstance(current_attacker, Enemy):
-					targets = list(reversed(targets))
+				if attack_type == AttackType.DAMAGE:
+					if isinstance(current_attacker, Enemy):
+						target_mask = list(reversed(target_mask))
+					targets_n = len(positioned_entities) - len(heroes.party) if positioned_entities.index(
+						current_attacker) <= len(heroes.party) - 1 else len(heroes.party)
+					targets = [1 if i < targets_n else 0 for i in range(len(target_mask))]
+					if isinstance(current_attacker, Enemy):
+						targets = list(reversed(targets))
+				elif attack_type == AttackType.HEAL:
+					targets_n = len(heroes.party) if positioned_entities.index(current_attacker) <= len(heroes.party) - 1 else len(positioned_entities) - len(heroes.party)
+					targets = [1 if i < targets_n else 0 for i in range(len(target_mask))]
+					if isinstance(current_attacker, Hero):
+						targets = list(reversed(targets))
+				else:
+					raise NotImplementedError(f'Unknown attack type: {attack.type.value}')
 				target_and = [1 if i == 1 and j == 1 else 0 for i, j in zip(target_mask, targets)]
 				attack.active &= sum(target_and) > 0
 		
@@ -113,20 +125,22 @@ class CombatEngine:
 	
 	def process_attack(self, heroes: HeroParty, game_data: Level, attack_idx: int) -> Tuple[int, List[str]]:
 		stress = 0
-		attack_msgs = []
+		action_msgs = []
 		
 		positioned_entities = self.get_entities(heroes, game_data)
 		current_attacker = self.sorted_entities[self.currently_active]
 		attack = current_attacker.attacks[attack_idx] if attack_idx < len(
 			current_attacker.attacks) else self.extra_actions[attack_idx - len(current_attacker.attacks)]
 		
-		if attack.name == 'Move':
+		attack_type = get_enum_by_value(AttackType, attack.type)
+		
+		if attack_type == AttackType.MOVE:
 			self.state = CombatPhase.CHOOSE_POSITION
 		else:
-			if attack.name == 'Pass':
-				attack_msgs.append(f'<b>{current_attacker.name}</b> passes!')
+			if attack_type == AttackType.PASS:
+				action_msgs.append(f'<b>{current_attacker.name}</b> passes!')
 				stress += 10 * (1 if isinstance(current_attacker, Hero) else -1)
-			else:
+			elif attack_type == AttackType.DAMAGE:
 				base_dmg = attack.base_dmg
 				attack_mask = self.convert_attack_mask(attack.target_positions)
 				if isinstance(current_attacker, Enemy):
@@ -136,16 +150,32 @@ class CombatEngine:
 				for i in range(min(len(attack_mask), len(positioned_entities) - attack_offset)):
 					if attack_mask[i]:
 						target_entity = positioned_entities[attack_offset + i]
+						# TODO: Add accuracy and dodge mechanic calculations
 						dmg_taken = int(base_dmg * (1 - target_entity.prot)) * attack_mask[i]
 						target_entity.hp -= dmg_taken
-						attack_msgs.append(
+						action_msgs.append(
 							f'<b>{current_attacker.name}</b>: {attack.description} <i>{dmg_taken}</i> damage dealt to <b>{target_entity.name}</b>!')
 						
 						stress += dmg_taken * (-1 if isinstance(current_attacker, Hero) else 1)
+			elif attack_type == AttackType.HEAL:
+				heal = -attack.base_dmg
+				heal_mask = self.convert_attack_mask(attack.target_positions)
+				if isinstance(current_attacker, Hero):
+					heal_mask = list(reversed(heal_mask))
+				heal_offset = 0 if isinstance(current_attacker, Hero) else len(positioned_entities) - len(heroes.party)
+				
+				for i in range(min(len(heal_mask), len(positioned_entities) - heal_offset)):
+					if heal_mask[i]:
+						target_entity = positioned_entities[heal_offset + i]
+						target_entity.hp += heal
+						action_msgs.append(f'<b>{current_attacker.name}</b>: {attack.description} <i>{heal}</i> heals <b>{target_entity.name}</b>!')
+						stress -= heal * (1 if isinstance(current_attacker, Hero) else -1)
+			else:
+				raise NotImplementedError(f'Unknown attack type: {attack_type.value}.')
 			
 			self.currently_active += 1
 		
-		return stress, attack_msgs
+		return stress, action_msgs
 	
 	def process_move(self, heroes: HeroParty, game_data: Level, idx: int) -> Tuple[int, List[str]]:
 		positioned_entities = self.get_entities(heroes, game_data)
