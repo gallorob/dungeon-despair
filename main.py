@@ -12,6 +12,7 @@ from context_manager import ContextManager
 from dungeon_despair.domain.configs import config as ddd_config
 from dungeon_despair.domain.level import Level
 from dungeon_despair.domain.room import Room
+from dungeon_despair.domain.utils import get_enum_by_value
 from engine.combat_engine import CombatPhase
 from engine.game_engine import GameEngine, GameState
 from heroes_party import Hero
@@ -83,7 +84,7 @@ game_over_window = GameOver(rect=pygame.Rect(configs.screen_width / 4, configs.s
 game_over_window.hide()
 
 # Set players
-heroes_player = AIPlayer()
+heroes_player = HumanPlayer()
 enemies_player = HumanPlayer()
 
 # Create game engine
@@ -426,6 +427,13 @@ while running:
 							                encounter_preview=encounter_preview,
 							                action_window=action_window)
 							encounter_preview.moving_to.kill()
+					else:
+						attack_idx = action_window.check_clicked_attack(event.pos)
+						if attack_idx is not None:
+							game_engine.combat_engine.try_cancel_move(attacker=current_attacker,
+							                                          idx=attack_idx)
+							if game_engine.combat_engine.state == CombatPhase.PICK_ATTACK:
+								encounter_preview.moving_to.kill()
 				# Moving mouse events
 				elif event.type == pygame.MOUSEMOTION:
 					# Display targeted entities when hovering over attacks

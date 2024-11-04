@@ -181,6 +181,15 @@ class CombatEngine:
 		
 		return stress, action_msgs
 	
+	def try_cancel_move(self,
+	                    attacker: Union[Hero, Enemy],
+	                    idx: int) -> None:
+		attack = attacker.attacks[idx] if idx < len(
+			attacker.attacks) else self.extra_actions[idx - len(attacker.attacks)]
+		attack_type = get_enum_by_value(AttackType, attack.type)
+		if attack_type == AttackType.MOVE:
+			self.state = CombatPhase.PICK_ATTACK
+	
 	def process_move(self, heroes: HeroParty, game_data: Level, idx: int) -> Tuple[int, List[str]]:
 		positioned_entities = self.get_entities(heroes, game_data)
 		current_attacker = self.sorted_entities[self.currently_active]
