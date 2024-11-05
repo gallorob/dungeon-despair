@@ -97,11 +97,9 @@ class EncounterPreview(UIWindow):
 		                   self.get_container().rect.height / area_image.get_height())
 		area_image = pygame.transform.scale(area_image, (int(scale_factor * area_image.get_width()),
 		                                                 int(scale_factor * area_image.get_height())))
-		dw, dh = ((self.get_container().rect.width - area_image.get_width()) / 2,
-		          (self.get_container().rect.height - area_image.get_height()) / 2)
-		room_rect = Rect(dw, dh,
-		                 self.get_container().rect.width - dw,
-		                 self.get_container().rect.height - dh)
+		room_rect = Rect(0, 0,
+		                 self.get_container().rect.width,
+		                 self.get_container().rect.height)
 		
 		self.background_image = UIImage(relative_rect=room_rect,
 		                                image_surface=area_image,
@@ -200,16 +198,17 @@ class EncounterPreview(UIWindow):
 			self.attacking.kill()
 		
 		ref_sprite = [*self.heroes, *self.enemies][idx]
+		y_offset = self.background_image.rect.height / 2
 		self.attacking = UIImage(
 			relative_rect=Rect(
 				ref_sprite.relative_rect.x + ref_sprite.relative_rect.width / 2 - self.padding / 4,
-				0,
-				self.padding / 2, self.padding / 2),
+				y_offset - (ref_sprite.relative_rect.height / 2) / 2 - self.padding / 4,
+				self.padding / 2,
+				self.padding / 2),
 			image_surface=pygame.image.load('assets/attacking_icon.png'),
 			manager=self.ui_manager, container=self.get_container(),
-			parent_element=self, anchors={
-				'centery': 'centery'
-			}, starting_height=self.starting_height + 1
+			parent_element=self,
+			starting_height=self.starting_height + 1
 		)
 	
 	def update_targeted(self, idxs: List[int]):
@@ -221,16 +220,16 @@ class EncounterPreview(UIWindow):
 			ref_sprite = [*self.heroes, *self.enemies][idx]
 			# not sure why the +1, but it works this way :/
 			attacking_x = int(self.attacking.rect.x - ref_sprite.relative_rect.width / 2 + self.padding / 4) + 1
+			y_offset = (self.background_image.rect.height / 2) - (ref_sprite.relative_rect.height / 2) / 2 - self.padding / 4
 			self.targeted.append(UIImage(
 				relative_rect=Rect(
 					ref_sprite.relative_rect.x + ref_sprite.relative_rect.width / 2 - self.padding / 4,
-					0 if (attacking_x != ref_sprite.rect.x) else - self.padding / 2,
+					y_offset if (attacking_x != ref_sprite.rect.x) else y_offset - self.padding / 2,
 					self.padding / 2, self.padding / 2),
 				image_surface=pygame.image.load('assets/targeted_icon.png'),
 				manager=self.ui_manager, container=self.get_container(),
-				parent_element=self, anchors={
-					'centery': 'centery'
-				}, starting_height=self.starting_height + 1
+				parent_element=self,
+				starting_height=self.starting_height + 1
 			))
 	
 	def update(self, time_delta: float):
@@ -249,16 +248,15 @@ class EncounterPreview(UIWindow):
 		ref_sprite = [*self.heroes, *self.enemies][sprite_idx]
 		# not sure why the +1, but it works this way :/
 		attacking_x = int(self.attacking.rect.x - ref_sprite.relative_rect.width / 2 + self.padding / 4) + 1
-		
+		y_offset = (self.background_image.rect.height / 2) - (ref_sprite.relative_rect.height / 2) / 2 - self.padding / 4
 		self.moving_to = UIImage(
 			relative_rect=Rect(
 				ref_sprite.relative_rect.x + ref_sprite.relative_rect.width / 2 - self.padding / 4,
-				0 if (attacking_x != ref_sprite.rect.x) else - self.padding / 2,
+				y_offset if (attacking_x != ref_sprite.rect.x) else y_offset - self.padding / 2,
 				self.padding / 2, self.padding / 2),
 			image_surface=pygame.image.load('assets/moving_icon.png'),
 			manager=self.ui_manager, container=self.get_container(),
-			parent_element=self, anchors={
-				'centery': 'centery'
-			}, starting_height=self.starting_height + 1
+			parent_element=self,
+			starting_height=self.starting_height + 1
 		)
 		
