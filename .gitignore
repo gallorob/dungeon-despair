@@ -5,3 +5,4 @@ dungeon-despair-domain
 *.log
 *.json
 my_scenarios
+update_existing_scenario.py
