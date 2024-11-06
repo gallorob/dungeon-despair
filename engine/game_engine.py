@@ -4,8 +4,10 @@ from typing import List, Tuple, Union
 from configs import configs
 from dungeon_despair.domain.attack import Attack
 from dungeon_despair.domain.entities.enemy import Enemy
+from dungeon_despair.domain.entities.entity import Entity
 from dungeon_despair.domain.level import Level
-from dungeon_despair.domain.utils import get_enum_by_value, AttackType
+from dungeon_despair.domain.modifier import Modifier
+from dungeon_despair.domain.utils import get_enum_by_value, AttackType, ModifierType
 from engine.actions_engine import ActionEngine
 from engine.combat_engine import CombatEngine
 from engine.movement_engine import MovementEngine
@@ -144,6 +146,35 @@ class GameEngine:
 			msgs.append(f'<i>Turn {self.combat_engine.turn_number}:</i>')
 		attacker = self.combat_engine.currently_attacking()
 		msgs.append(f'Attacking: <b>{attacker.name}</b>')
+		return msgs
+	
+	def process_modifiers(self) -> List[str]:
+		def process_entity_modifiers(entity: Union[Hero, Enemy]) -> List[str]:
+			msgs = []
+			for modifier in entity.modifiers:
+				modifier_type = get_enum_by_value(ModifierType, modifier.type)
+				if modifier_type == ModifierType.BLEED:
+					entity.hp -= modifier.amount
+					self.stress += modifier.amount * (1 if isinstance(entity, Hero) else -1)
+					msgs.append(f'<b>{entity.name}</b> takes {modifier.amount} damage from {modifier.type}!')
+				elif modifier_type == ModifierType.HEALING:
+					heal_amount = min(modifier.amount, entity.max_hp - entity.hp)
+					entity.hp += heal_amount
+					self.stress -= heal_amount * (1 if isinstance(entity, Hero) else -1)
+					msgs.append(f'<b>{entity.name}</b> heals {heal_amount} points via {modifier.type}!')
+			return msgs
+		
+		msgs = []
+		# Process and apply all modifiers
+		for hero in self.heroes.party:
+			msgs.extend(process_entity_modifiers(hero))
+		for room in self.game_data.rooms.values():
+			for enemy in room.encounter.entities['enemy']:
+				msgs.extend(process_entity_modifiers(enemy))
+		for corridor in self.game_data.corridors.values():
+			for encounter in corridor.encounters:
+				for enemy in encounter.entities['enemy']:
+					msgs.extend(process_entity_modifiers(enemy))
 		return msgs
 	
 	def get_current_attacker_with_idx(self) -> Tuple[Union[Hero, Enemy], int]:

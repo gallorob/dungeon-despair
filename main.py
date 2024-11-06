@@ -1,5 +1,6 @@
 import copy
 import os.path
+from enum import Enum, auto
 from typing import Union
 
 import pygame
@@ -14,7 +15,6 @@ from dungeon_despair.domain.configs import config as ddd_config
 from dungeon_despair.domain.entities.enemy import Enemy
 from dungeon_despair.domain.level import Level
 from dungeon_despair.domain.room import Room
-from dungeon_despair.domain.utils import get_enum_by_value
 from engine.combat_engine import CombatPhase
 from engine.game_engine import GameEngine, GameState
 from heroes_party import Hero
@@ -26,7 +26,7 @@ from ui_components.encounter_preview import EncounterPreview
 from ui_components.events_history import EventsHistory
 from ui_components.gameover_window import GameOver
 from ui_components.level_preview import LevelPreview
-from utils import get_current_room, get_current_encounter
+from utils import get_current_room, get_current_encounter, set_ingame_properties
 
 # clear assets folder on exec
 if os.path.exists(os.path.join(configs.assets, 'dungeon_assets')):
@@ -178,6 +178,8 @@ def check_aftermath(game_engine: GameEngine,
                     level_preview: LevelPreview,
                     encounter_preview: EncounterPreview,
                     action_window: ActionWindow):
+	msgs = game_engine.process_modifiers()
+	messages.extend(msgs)
 	msgs = game_engine.check_dead_entities()
 	messages.extend(msgs)
 	msgs = game_engine.check_end_encounter()
@@ -192,6 +194,7 @@ def check_aftermath(game_engine: GameEngine,
 		                                                       encounter_idx=game_engine.movement_engine.encounter_idx),
 		                                 get_current_room(level=game_engine.game_data).name,
 		                                 encounter_idx=game_engine.movement_engine.encounter_idx)
+		encounter_preview.attacking.kill()
 	elif game_engine.state == GameState.IN_COMBAT and game_engine.combat_engine.state == CombatPhase.PICK_ATTACK:
 		msgs = game_engine.next_turn()
 		messages.extend(msgs)
@@ -246,6 +249,8 @@ def move_to_room(room_name: str,
 	                  action_window=action_window)
 
 
+# TODO: Modifiers are checked only for human players, this needs to change (obviously)
+
 while running:
 	time_delta = clock.tick(60) / 1000.0
 	
@@ -267,6 +272,8 @@ while running:
 				selected_file_path = event.text
 				level = Level.load_as_scenario(selected_file_path)
 				game_engine.set_level(level)
+				set_ingame_properties(game_data=game_engine.game_data,
+				                      heroes=game_engine.get_heroes_party())
 				level_preview.show()
 				level_preview.create_minimap(game_engine.game_data)
 				encounter_preview.show()
@@ -300,6 +307,10 @@ while running:
 								             game_engine=game_engine,
 								             level_preview=level_preview,
 								             encounter_preview=encounter_preview)
+								game_engine.combat_engine.tick_modifiers(game_engine.heroes,
+								                                         game_engine.game_data)
+								messages.extend(game_engine.process_modifiers())
+								messages.extend(game_engine.check_dead_entities())
 							else:
 								messages.append(err_msg)
 			elif heroes_player.type == PlayerType.RANDOM:
@@ -340,6 +351,10 @@ while running:
 						if choice is not None:
 							outcome_action = game_engine.attempt_looting(choice)
 							messages.extend(outcome_action)
+							game_engine.combat_engine.tick_modifiers(game_engine.heroes,
+							                                         game_engine.game_data)
+							messages.extend(game_engine.process_modifiers())
+							messages.extend(game_engine.check_dead_entities())
 							action_window.clear_choices()
 							update_ui_previews(game_engine=game_engine,
 							                   level_preview=level_preview,
@@ -378,6 +393,10 @@ while running:
 						choice = action_window.check_clicked_choice(event.pos)
 						if choice is not None:
 							outcome_action = game_engine.attempt_disarm()
+							game_engine.combat_engine.tick_modifiers(game_engine.heroes,
+							                                         game_engine.game_data)
+							messages.extend(game_engine.process_modifiers())
+							messages.extend(game_engine.check_dead_entities())
 							messages.extend(outcome_action)
 							game_engine.state = GameState.IDLE
 							action_window.clear_choices()

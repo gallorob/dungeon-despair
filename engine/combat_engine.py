@@ -1,3 +1,4 @@
+import copy
 import random
 from enum import auto, Enum
 from typing import List, Tuple, Union, Optional
@@ -7,7 +8,7 @@ from dungeon_despair.domain.attack import Attack
 from dungeon_despair.domain.encounter import Encounter
 from dungeon_despair.domain.entities.enemy import Enemy
 from dungeon_despair.domain.level import Level
-from dungeon_despair.domain.utils import AttackType, get_enum_by_value
+from dungeon_despair.domain.utils import AttackType, get_enum_by_value, ModifierType
 from heroes_party import Hero, HeroParty
 
 
@@ -56,17 +57,45 @@ class CombatEngine:
 		modified_speed = [(entity.spd * 10) + random.randint(1, 10) for entity in entities]
 		sorted_entities = [i for i, _ in sorted(enumerate(modified_speed), key=lambda x: x[1])]
 		# return sorted_entities
-		return [entities[i] for i in sorted_entities]
+		sorted_entities = [entities[i] for i in sorted_entities]
+		# remove entities that are stunned
+		stunned = []
+		for i, entity in enumerate(sorted_entities):
+			for modifier in entity.modifiers:
+				if get_enum_by_value(ModifierType, modifier.type) == ModifierType.STUN:
+					stunned.append(i)
+		for i in reversed(stunned):
+			sorted_entities.pop(i)
+		return sorted_entities
 	
 	def get_entities(self, heroes: HeroParty, game_data: Level) -> List[Union[Hero, Enemy]]:
 		return [*heroes.party, *self.current_encounter.entities.get('enemy', [])]
 	
 	def start_turn(self, heroes: HeroParty, game_data: Level) -> int:
+		self.tick_modifiers(heroes, game_data)
 		self.turn_number += 1
 		self.currently_active = 0
 		# Everyone takes a move during the turn, then the turn advances and everyone rerolls turn order and goes again.
 		self.sorted_entities = self.sort_entities(self.get_entities(heroes, game_data))
 		return configs.game.stress.turn
+	
+	def tick_modifiers(self, heroes: HeroParty, game_data: Level) -> None:
+		# Tick down every modifier applied to heroes and enemies
+		for hero in heroes.party:
+			for modifier in hero.modifiers:
+				modifier.turns -= 1
+			hero.modifiers = [x for x in hero.modifiers if x.turns != 0]
+		for room in game_data.rooms.values():
+			for enemy in room.encounter.entities['enemy']:
+				for modifier in enemy.modifiers:
+					modifier.turns -= 1
+				enemy.modifiers = [x for x in enemy.modifiers if x.turns != 0]
+		for corridor in game_data.corridors.values():
+			for encounter in corridor.encounters:
+				for enemy in encounter.entities['enemy']:
+					for modifier in enemy.modifiers:
+						modifier.turns -= 1
+					enemy.modifiers = [x for x in enemy.modifiers if x.turns != 0]
 	
 	def convert_attack_mask(self, mask: str):
 		return [1 if x == 'X' else 0 for x in mask]
@@ -155,6 +184,10 @@ class CombatEngine:
 							target_entity.hp -= dmg_taken
 							action_msgs.append(
 								f'<b>{current_attacker.name}</b>: {attack.description} <i>{dmg_taken}</i> damage dealt to <b>{target_entity.name}</b>!')
+							if attack.modifier:
+								if random.random() <= attack.modifier.chance:
+									target_entity.modifiers.append(copy.deepcopy(attack.modifier))
+									action_msgs.append(f'<b>{target_entity.name}</b> receives a {attack.modifier.type} modifier!')
 							stress += int(dmg_taken * (-1 if isinstance(current_attacker, Hero) else 1))
 						else:
 							action_msgs.append(
@@ -170,8 +203,15 @@ class CombatEngine:
 				for i in range(min(len(heal_mask), len(positioned_entities) - heal_offset)):
 					if heal_mask[i]:
 						target_entity = positioned_entities[heal_offset + i]
+						hp_before = target_entity.hp
 						target_entity.hp += heal
-						action_msgs.append(f'<b>{current_attacker.name}</b>: {attack.description} <i>{heal}</i> heals <b>{target_entity.name}</b>!')
+						target_entity.hp = min(target_entity.max_hp, target_entity.hp)
+						hp_diff = target_entity.hp - hp_before
+						action_msgs.append(f'<b>{current_attacker.name}</b>: {attack.description} heals <b>{target_entity.name}</b> by <i>{hp_diff}</i>!')
+						if attack.modifier:
+							if random.random() <= attack.modifier.chance:
+								target_entity.modifiers.append(copy.deepcopy(attack.modifier))
+								action_msgs.append(f'<b>{target_entity.name}</b> receives a {attack.modifier.type} modifier!')
 						stress -= int(heal * (1 if isinstance(current_attacker, Hero) else -1))
 			else:
 				raise NotImplementedError(f'Unknown attack type: {attack_type.value}.')

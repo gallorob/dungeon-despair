@@ -11,7 +11,7 @@ from dungeon_despair.domain.entities.treasure import Treasure
 from dungeon_despair.domain.level import Level
 from dungeon_despair.domain.room import Room
 from dungeon_despair.domain.utils import get_enum_by_value, AttackType
-from heroes_party import Hero
+from heroes_party import Hero, HeroParty
 
 
 def img_to_pygame_sprite(img: Image) -> Surface:
@@ -68,3 +68,16 @@ def rich_attack_description(attack: Attack) -> str:
 		return f'<b>{attack.name}</b>:  <i>{attack.description}</i> (HEAL: {attack.base_dmg} FROM: {attack.starting_positions} TO: {attack.target_positions})'
 	else:
 		raise NotImplementedError(f'Unknown attack type: {attack.type}')
+
+def set_ingame_properties(game_data: Level, heroes: HeroParty) -> None:
+	for hero in heroes.party:
+		hero.max_hp = hero.hp
+	
+	for room in game_data.rooms.values():
+		for enemy in room.encounter.entities['enemy']:
+			enemy.max_hp = enemy.hp
+	
+	for corridor in game_data.corridors.values():
+		for encounter in corridor.encounters:
+			for enemy in encounter.entities['enemy']:
+				enemy.max_hp = enemy.hp
