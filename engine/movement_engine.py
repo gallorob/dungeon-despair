@@ -12,18 +12,17 @@ class MovementEngine:
 	def move_to_room(self,
 	                 level: Level,
 	                 dest_room_name: str,
-	                 encounter_idx: int = -1) -> List[Optional[str]]:
-		level.current_room = dest_room_name
-		self.encounter_idx = encounter_idx
-		
-		if dest_room_name != level.current_room:
+	                 encounter_idx: int = -1) -> Tuple[List[str], int]:
+		if dest_room_name != level.current_room or self.encounter_idx != encounter_idx:
+			level.current_room = dest_room_name
+			self.encounter_idx = encounter_idx
 			area = get_current_room(level=level)
 			if isinstance(area, Room):
 				msg = f'You enter <b>{area.name}</b>: <i>{area.description}</i>'
 			else:
 				msg = f'You enter the corridor that connects <b>{area.room_from}</b> to <b>{area.room_to}</b>'
-			return [msg]
-		return []
+			return [msg], configs.game.stress.movement
+		return [], 0
 	
 	def reachable(self,
 	              level: Level,

@@ -54,10 +54,10 @@ class LevelPreview(UIWindow):
 	
 	def create_minimap(self, game_data: Level):
 		if len(self.map) == 0:
-			room_button_size = (self.get_container().get_relative_rect().height * configs.minimap_room_scale,
-			                    self.get_container().get_relative_rect().height * configs.minimap_room_scale)
-			corridor_button_size = (self.get_container().get_relative_rect().height * configs.minimap_corridor_scale,
-			                        self.get_container().get_relative_rect().height * configs.minimap_corridor_scale)
+			room_button_size = (self.get_container().get_relative_rect().height * configs.ui.minimap.room_scale,
+			                    self.get_container().get_relative_rect().height * configs.ui.minimap.room_scale)
+			corridor_button_size = (self.get_container().get_relative_rect().height * configs.ui.minimap.corridor_scale,
+			                        self.get_container().get_relative_rect().height * configs.ui.minimap.corridor_scale)
 			corridor_room_difference = ((room_button_size[0] - corridor_button_size[0]) / 2,
 			                            (room_button_size[1] - corridor_button_size[1]) / 2)
 			room_positions = {}

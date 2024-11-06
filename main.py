@@ -1,5 +1,6 @@
 import copy
 import os.path
+from typing import Union
 
 import pygame
 import pygame_gui
@@ -10,6 +11,7 @@ from pygame_gui.elements import UIWindow
 from configs import configs
 from context_manager import ContextManager
 from dungeon_despair.domain.configs import config as ddd_config
+from dungeon_despair.domain.entities.enemy import Enemy
 from dungeon_despair.domain.level import Level
 from dungeon_despair.domain.room import Room
 from dungeon_despair.domain.utils import get_enum_by_value
@@ -36,7 +38,7 @@ ddd_config.temp_dir = os.path.join(configs.assets, 'dungeon_assets')
 pygame.init()
 
 # Initialize the screen
-screen = pygame.display.set_mode((configs.screen_width, configs.screen_height))
+screen = pygame.display.set_mode((configs.ui.screen_width, configs.ui.screen_height))
 pygame.display.set_caption("Dungeon Despair")
 pygame.display.set_icon(pygame.image.load('./assets/dungeon_despair_logo.png'))
 
@@ -51,17 +53,17 @@ ui_manager.preload_fonts([{'name': 'noto_sans', 'point_size': 14, 'style': 'bold
                           {'name': 'noto_sans', 'point_size': 14, 'style': 'bold', 'antialiased': '1'}
                           ])
 # Define the sizes
-room_preview_height = screen.get_height() * configs.topleft_preview_percentage
-room_preview_width = screen.get_width() * configs.left_panel_percentage
+room_preview_height = screen.get_height() * configs.ui.topleft_preview_percentage
+room_preview_width = screen.get_width() * configs.ui.left_panel_percentage
 
 level_minimap_height = screen.get_height() / 2
-level_minimap_width = screen.get_width() * (1 - configs.left_panel_percentage)
+level_minimap_width = screen.get_width() * (1 - configs.ui.left_panel_percentage)
 
 action_window_height = screen.get_height() / 2
-action_window_width = screen.get_width() * (1 - configs.left_panel_percentage)
+action_window_width = screen.get_width() * (1 - configs.ui.left_panel_percentage)
 
-events_history_height = screen.get_height() * (1 - configs.topleft_preview_percentage)
-events_history_width = screen.get_width() * configs.left_panel_percentage
+events_history_height = screen.get_height() * (1 - configs.ui.topleft_preview_percentage)
+events_history_width = screen.get_width() * configs.ui.left_panel_percentage
 
 # Initialize game areas
 encounter_preview = EncounterPreview(pygame.Rect(0, 0, room_preview_width, room_preview_height), ui_manager)
@@ -78,8 +80,8 @@ action_window.hide()
 events_history.hide()
 
 # Game over window
-game_over_window = GameOver(rect=pygame.Rect(configs.screen_width / 4, configs.screen_height / 4,
-                                             configs.screen_width / 2, configs.screen_height / 2),
+game_over_window = GameOver(rect=pygame.Rect(configs.ui.screen_width / 4, configs.ui.screen_height / 4,
+                                             configs.ui.screen_width / 2, configs.ui.screen_height / 2),
                             ui_manager=ui_manager)
 game_over_window.hide()
 
@@ -93,8 +95,8 @@ game_engine: GameEngine = GameEngine(heroes_player=heroes_player,
 
 # Level selection dialog
 file_dlg = pygame_gui.windows.ui_file_dialog.UIFileDialog(
-	rect=pygame.Rect(configs.screen_width / 4, configs.screen_height / 4,
-	                 configs.screen_width / 2, configs.screen_height / 2),
+	rect=pygame.Rect(configs.ui.screen_width / 4, configs.ui.screen_height / 4,
+	                 configs.ui.screen_width / 2, configs.ui.screen_height / 2),
 	manager=None,
 	window_title='Choose a scenario',
 	initial_file_path='./my_scenarios',
@@ -235,6 +237,7 @@ def move_to_room(room_name: str,
 	messages.extend(game_engine.update_state())
 	encounter_preview.set_display_title(
 		f'Encounter - {room_name}' + (f' ({encounter_idx})' if encounter_idx != -1 else ''))
+	encounter_preview.display_stress_level(game_engine.stress)
 	check_and_start_encounter(game_engine=game_engine,
 	                          level_preview=level_preview,
 	                          encounter_preview=encounter_preview,

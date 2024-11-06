@@ -1,29 +1,25 @@
 rng_seed: 1234
 
-screen_width: 1280
-screen_height: 720
-
-left_panel_percentage: 0.725
-topleft_preview_percentage: 0.7
-
-max_enemies_per_encounter: 4
-max_treasures_per_encounter: 1
-max_traps_per_encounter: 1
-corridor_min_length: 2
-corridor_max_length: 4
-
-trap_disarm_chance: 0.8
-trap_disarm_stress: -20
-trap_dmg_percentage: 0.1
-
-treasure_loot_chance: 0.8
-treasure_loot_stress: -15
-
-entity_scale: 0.35
-minimap_room_scale: 0.15
-minimap_corridor_scale: 0.075
-
-selected_color: '#ffbf00'
-unselected_color: '#b38600'
-
+ui:
+  screen_width: 1280
+  screen_height: 720
+  left_panel_percentage: 0.8
+  topleft_preview_percentage: 0.7
+  minimap:
+    room_scale: 0.15
+    corridor_scale: 0.075
 assets: './assets'
+
+game:
+  stress:
+    movement: 1
+    turn: 2
+    disarm_trap: -5
+    trigger_trap: 7
+    loot_treasure: -7
+    trigger_trapped_treasure: 12
+    ignore_treasure: 5
+    hero_kill_enemy: -10
+    enemy_kill_hero: 50
+    passing: 10
+    switch_position: 10

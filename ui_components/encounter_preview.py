@@ -12,6 +12,7 @@ from dungeon_despair.domain.encounter import Encounter
 from dungeon_despair.domain.entities.enemy import Enemy
 from dungeon_despair.domain.entities.hero import Hero
 from dungeon_despair.domain.room import Room
+from dungeon_despair.domain.configs import config as ddd_config
 from heroes_party import HeroParty
 from utils import rich_entity_description
 
@@ -152,17 +153,17 @@ class EncounterPreview(UIWindow):
 		self.treasures = []
 		
 		# show enemies
-		self.enemies = __add_and_show_entities(max_n=configs.max_enemies_per_encounter,
+		self.enemies = __add_and_show_entities(max_n=ddd_config.max_enemies_per_encounter,
 		                                       entity_type='enemy',
 		                                       height_diff=1,
 		                                       additional_x_offset=0)
 		# show traps
-		self.traps = __add_and_show_entities(max_n=4,  # configs.max_traps_per_encounter,
+		self.traps = __add_and_show_entities(max_n=4,  # ddd_config.max_traps_per_encounter,
 		                                     entity_type='trap',
 		                                     height_diff=1,
 		                                     additional_x_offset=-self.padding)
 		# show treasures
-		self.treasures = __add_and_show_entities(max_n=4,  # configs.max_treasures_per_encounter,
+		self.treasures = __add_and_show_entities(max_n=4,  # ddd_config.max_treasures_per_encounter,
 		                                         entity_type='treasure',
 		                                         height_diff=1,
 		                                         additional_x_offset=-self.padding)
@@ -243,7 +244,7 @@ class EncounterPreview(UIWindow):
 				return i
 		return None
 	
-	def update_moving_to(self, sprite_idx):
+	def update_moving_to(self, sprite_idx, attacker: Union[Hero, Enemy]):
 		if self.moving_to:
 			self.moving_to.kill()
 		

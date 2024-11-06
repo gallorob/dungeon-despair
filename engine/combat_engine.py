@@ -2,16 +2,13 @@ import random
 from enum import auto, Enum
 from typing import List, Tuple, Union, Optional
 
+from configs import configs
 from dungeon_despair.domain.attack import Attack
 from dungeon_despair.domain.encounter import Encounter
 from dungeon_despair.domain.entities.enemy import Enemy
 from dungeon_despair.domain.level import Level
 from dungeon_despair.domain.utils import AttackType, get_enum_by_value
 from heroes_party import Hero, HeroParty
-
-# Refer to:
-# https://darkestdungeon.fandom.com/wiki/Getting_Started#The_Basics
-# https://www.reddit.com/r/darkestdungeon/comments/3iyyvs/how_does_combat_work/
 
 
 class CombatPhase(Enum):
@@ -43,13 +40,13 @@ class CombatEngine:
 		
 		self.state = CombatPhase.PICK_ATTACK
 	
-	def start_encounter(self, encounter, heroes: HeroParty, game_data: Level) -> List[str]:
+	def start_encounter(self, encounter, heroes: HeroParty, game_data: Level) -> Tuple[List[str], int]:
 		msgs = ['<b><i>### NEW ENCOUNTER</i></b>', '<i>Turn 1:</i>']
 		self.turn_number = 0
 		self.current_encounter = encounter
-		self.start_turn(heroes, game_data)
-		msgs.append(f'Attacking: <b>{self.currently_attacking(heroes, game_data).name}</b>')
-		return msgs
+		stress_diff = self.start_turn(heroes, game_data)
+		msgs.append(f'Attacking: <b>{self.currently_attacking().name}</b>')
+		return msgs, stress_diff
 	
 	def is_encounter_over(self, heroes: HeroParty, game_data: Level):
 		return len(heroes.party) == 0 or len(self.current_encounter.entities.get('enemy', [])) == 0
@@ -64,16 +61,17 @@ class CombatEngine:
 	def get_entities(self, heroes: HeroParty, game_data: Level) -> List[Union[Hero, Enemy]]:
 		return [*heroes.party, *self.current_encounter.entities.get('enemy', [])]
 	
-	def start_turn(self, heroes: HeroParty, game_data: Level):
+	def start_turn(self, heroes: HeroParty, game_data: Level) -> int:
 		self.turn_number += 1
 		self.currently_active = 0
 		# Everyone takes a move during the turn, then the turn advances and everyone rerolls turn order and goes again.
 		self.sorted_entities = self.sort_entities(self.get_entities(heroes, game_data))
+		return configs.game.stress.turn
 	
 	def convert_attack_mask(self, mask: str):
 		return [1 if x == 'X' else 0 for x in mask]
 	
-	def currently_attacking(self, heroes: HeroParty, game_data: Level) -> Union[Hero, Enemy]:
+	def currently_attacking(self) -> Union[Hero, Enemy]:
 		current_attacker = self.sorted_entities[self.currently_active]
 		return current_attacker
 	
@@ -139,7 +137,7 @@ class CombatEngine:
 		else:
 			if attack_type == AttackType.PASS:
 				action_msgs.append(f'<b>{current_attacker.name}</b> passes!')
-				stress += 10 * (1 if isinstance(current_attacker, Hero) else -1)
+				stress += configs.game.stress.passing * (1 if isinstance(current_attacker, Hero) else -1)
 			elif attack_type == AttackType.DAMAGE:
 				base_dmg = attack.base_dmg
 				attack_mask = self.convert_attack_mask(attack.target_positions)
@@ -151,8 +149,9 @@ class CombatEngine:
 					if attack_mask[i]:
 						target_entity = positioned_entities[attack_offset + i]
 						do_hit = 1 if random.random() < max(0.0, (attack.accuracy * 2) - target_entity.dodge) else 0
+						hyp_dmg = int(base_dmg * (1 - target_entity.prot))
 						if do_hit:
-							dmg_taken = int(base_dmg * (1 - target_entity.prot))
+							dmg_taken = hyp_dmg
 							target_entity.hp -= dmg_taken
 							action_msgs.append(
 								f'<b>{current_attacker.name}</b>: {attack.description} <i>{dmg_taken}</i> damage dealt to <b>{target_entity.name}</b>!')
@@ -160,7 +159,7 @@ class CombatEngine:
 						else:
 							action_msgs.append(
 								f'<b>{current_attacker.name}</b>: {attack.description} but misses!')
-							stress += int(10 * (-1 if isinstance(current_attacker, Enemy) else 1))
+							stress += int(hyp_dmg / 2 * (-1 if isinstance(current_attacker, Enemy) else 1))
 			elif attack_type == AttackType.HEAL:
 				heal = -attack.base_dmg
 				heal_mask = self.convert_attack_mask(attack.target_positions)
@@ -194,12 +193,14 @@ class CombatEngine:
 		positioned_entities = self.get_entities(heroes, game_data)
 		current_attacker = self.sorted_entities[self.currently_active]
 		
+		stress_diff = 0
 		curr_idx = positioned_entities.index(current_attacker)
 		
 		if isinstance(current_attacker, Hero):
 			if idx < len(heroes.party) and idx != curr_idx:
 				move_msg = f"<b>{current_attacker.name}</b> moves in <b>{heroes.party[idx].name}</b> position!"
 				heroes.party.insert(idx, heroes.party.pop(curr_idx))
+				stress_diff += configs.game.stress.switch_position
 				self.state = CombatPhase.PICK_ATTACK
 				self.currently_active += 1
 			else:
@@ -210,12 +211,13 @@ class CombatEngine:
 				idx -= len(heroes.party)
 				move_msg = f"<b>{current_attacker.name}</b> moves in <b>{self.current_encounter.entities['enemy'][idx].name}</b> position!"
 				self.current_encounter.entities['enemy'].insert(idx, self.current_encounter.entities['enemy'].pop(curr_idx))
+				stress_diff -= configs.game.stress.switch_position
 				self.state = CombatPhase.PICK_ATTACK
 				self.currently_active += 1
 			else:
 				move_msg = f"<b>{current_attacker.name}</b> can only move within its group!"
 		
-		return 0, [move_msg]
+		return stress_diff, [move_msg]
 	
 	def process_dead_entities(self, heroes: HeroParty, game_data: Level) -> Tuple[int, List[str]]:
 		stress = 0
@@ -226,7 +228,10 @@ class CombatEngine:
 		for i, entity in enumerate(positioned_entities):
 			if entity.hp <= 0:
 				dead_entities.append(i)
-				stress += 100 * (1 if isinstance(entity, Hero) else -1)
+				if isinstance(entity, Hero):
+					stress += configs.game.stress.enemy_kill_hero
+				else:
+					stress += configs.game.stress.hero_kill_enemy - self.turn_number
 				messages.append(f'<b>{entity.name}</b> is dead!')
 				self.sorted_entities.remove(entity)
 		
