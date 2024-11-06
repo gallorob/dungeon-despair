@@ -71,9 +71,10 @@ class ActionWindow(UIWindow):
 		btn_height = self.get_container().rect.height / 8
 		starting_height = self.get_container().rect.height / 2 - btn_height
 		
-		for i, (choice, tooltip) in enumerate(zip(['Try looting', 'Ignore'],
-		                                          ['Try your luck looting the treasure',
-		                                           'Move on and leave the treasure behind'])):
+		for i, (choice, tooltip) in enumerate(zip(['Inspect and Loot', 'Loot', 'Ignore'],
+		                                          ['Inspect the treasure for traps and then loot',
+			                                       'Try your luck looting the treasure',
+			                                       'Move on and leave the treasure behind'])):
 			choice_btn = UIButton(text=choice,
 			                      relative_rect=Rect(0,
 			                                         starting_height + (i * btn_height),

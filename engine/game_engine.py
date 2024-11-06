@@ -171,11 +171,12 @@ class GameEngine:
 	
 	def attempt_looting(self,
 	                    choice: int) -> List[str]:
-		if choice == 0:
+		if choice == 0 or choice == 1:
 			encounter = get_current_encounter(level=self.game_data,
 			                                  encounter_idx=self.movement_engine.encounter_idx)
 			msgs, stress_diff = self.actions_engine.resolve_treasure_encounter(encounter=encounter,
-			                                                                   heroes=self.heroes)
+			                                                                   heroes=self.heroes,
+			                                                                   do_inspect=choice == 1)
 			self.stress += stress_diff
 		else:
 			msgs = ['You ignore the treasure... For now.']
