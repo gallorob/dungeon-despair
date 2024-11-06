@@ -34,6 +34,8 @@ def get_temp_heroes():
 		     dodge=0.8,
 		     prot=0.8,
 		     spd=0.2,
+		     trap_resist=0.1,
+		     stress_resist=0.0,
 		     attacks=[
 			     Attack(name='Blade of Valor',
 			            description='Gareth swings his large sword in a powerful arc.',
@@ -64,6 +66,8 @@ def get_temp_heroes():
 		     dodge=0.2,
 		     prot=0.2,
 		     spd=0.1,
+		     trap_resist=0.1,
+		     stress_resist=0.0,
 		     attacks=[
 			     Attack(name='Divine Light',
 			            description='Elira calls down a beam of holy light to smite her enemies.',
@@ -94,6 +98,8 @@ def get_temp_heroes():
 		     dodge=0.3,
 		     prot=0.3,
 		     spd=0.5,
+		     trap_resist=0.1,
+		     stress_resist=0.0,
 		     attacks=[
 			     Attack(name='Arcane Blast',
 			            description='Aelarion unleashes a burst of arcane energy from his staff.',
@@ -124,6 +130,8 @@ def get_temp_heroes():
 		     dodge=0.9,
 		     prot=0.2,
 		     spd=0.8,
+		     trap_resist=0.1,
+		     stress_resist=0.0,
 		     attacks=[
 			     Attack(name='Shadow Strike',
 			            description='Milo darts through the shadows, striking from an unexpected angle.',

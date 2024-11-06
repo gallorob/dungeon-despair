@@ -3,6 +3,8 @@ from typing import List, Tuple
 
 from configs import configs
 from dungeon_despair.domain.encounter import Encounter
+from dungeon_despair.domain.entities.trap import Trap
+from dungeon_despair.domain.entities.treasure import Treasure
 from heroes_party import HeroParty
 
 
@@ -20,28 +22,44 @@ class ActionEngine:
 	def resolve_trap_encounter(self,
 	                           encounter: Encounter,
 	                           heroes: HeroParty) -> Tuple[List[str], int]:
-		trap = encounter.entities['trap'][0]
+		trap: Trap = encounter.entities['trap'][0]
 		messages = []
-		disarmed = 1
-		if random.random() <= configs.trap_disarm_chance:
-			messages.append(f'You successfully disarm {trap.name}!')
+		hero = random.choice(heroes.party)
+		# in darkest dungeon:
+		# chance to disarm: random hero.trap_resist (+40% if trap is spotted) - trap.chance
+		p = hero.trap_resist - trap.chance
+		if random.random() <= p:
+			messages.append(f'<b>{hero.name}</b> successfully disarms {trap.name}!')
+			stress_delta = configs.game.stress.disarm_trap
 		else:
-			messages.append(f'You fail to disarm {trap.name}!')
-			hero = random.choice(heroes.party)
-			hero.hp -= hero.hp * configs.trap_dmg_percentage
-			disarmed = -1
+			dmg_dealt = trap.dmg
+			hero.hp -= dmg_dealt
+			messages.append(f'<b>{hero.name}</b> fails to disarms {trap.name} and receives <i>{dmg_dealt}</i> damage!')
+			# Apply debuffs to the hero here if there are any from the trap...
+			stress_delta = (1 - hero.stress_resist) * (configs.game.stress.trigger_trap + dmg_dealt)
 		encounter.entities['trap'].pop(0)
-		return messages, configs.trap_disarm_stress * disarmed
+		return messages, int(stress_delta)
 	
 	def resolve_treasure_encounter(self,
-	                               encounter: Encounter) -> Tuple[List[str], int]:
-		treasure = encounter.entities['treasure'][0]
+	                               encounter: Encounter,
+	                               heroes: HeroParty) -> Tuple[List[str], int]:
+		treasure: Treasure = encounter.entities['treasure'][0]
 		messages = []
-		looted = 1
-		if random.random() <= configs.treasure_loot_chance:
-			messages.append(f'You loot <b>{treasure.name}</b>!')
+		hero = random.choice(heroes.party)
+		# in darkest dungeon:
+		# curios have a ~75% chance of containing loot and ~25% chance of being empty
+		# plus other effects, so... we do what we want here
+		if random.random() <= treasure.trapped_chance:
+			if random.random() <= hero.trap_resist:
+				messages.append(f'<b>{hero.name}</b> successfully disarms the trap in {treasure.name} and loots it!')
+				stress_delta = configs.game.stress.loot_treasure + configs.game.stress.disarm_trap
+			else:
+				messages.append(f'<b>{hero.name}</b> triggers the trap in {treasure.name}!')
+				dmg_dealt = treasure.dmg
+				hero.hp -= dmg_dealt
+				stress_delta = (1 - hero.stress_resist) * (configs.game.stress.trigger_trapped_treasure + dmg_dealt)
 		else:
-			messages.append(f'<b>{treasure.name}</b> is fake!')
-			looted = -1
+			messages.append(f'<b>{hero.name}</b> loots {treasure.name}!')
+			stress_delta = configs.game.stress.loot_treasure
 		encounter.entities['treasure'].pop(0)
-		return messages, configs.treasure_loot_stress * looted
+		return messages, int(stress_delta)

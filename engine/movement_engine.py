@@ -3,6 +3,7 @@ from typing import List, Optional, Tuple
 from dungeon_despair.domain.level import Level
 from dungeon_despair.domain.room import Room
 from utils import get_current_room
+from configs import configs
 
 
 class MovementEngine:

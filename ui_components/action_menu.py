@@ -55,19 +55,16 @@ class ActionWindow(UIWindow):
 		btn_height = self.get_container().rect.height / 8
 		starting_height = self.get_container().rect.height / 2 - btn_height
 		
-		for i, (choice, tooltip) in enumerate(zip(['Attempt to disarm', 'Ignore'],
-		                                          ['Try your luck disarming the trap',
-		                                           'Move on and leave the trap as-is'])):
-			choice_btn = UIButton(text=choice,
-			                      relative_rect=Rect(0,
-			                                         starting_height + (i * btn_height),
-			                                         self.get_container().rect.width,
-			                                         btn_height),
-			                      manager=self.ui_manager,
-			                      starting_height=self.starting_height,
-			                      container=self.get_container())
-			choice_btn.set_tooltip(tooltip)
-			self.choices.append(choice_btn)
+		choice_btn = UIButton(text='Attempt to disarm',
+		                      relative_rect=Rect(0,
+		                                         starting_height,
+		                                         self.get_container().rect.width,
+		                                         btn_height),
+		                      manager=self.ui_manager,
+		                      starting_height=self.starting_height,
+		                      container=self.get_container())
+		choice_btn.set_tooltip('Try your luck disarming the trap')
+		self.choices.append(choice_btn)
 	
 	def display_treasure_choices(self):
 		self.clear_choices()
@@ -76,7 +73,7 @@ class ActionWindow(UIWindow):
 		
 		for i, (choice, tooltip) in enumerate(zip(['Try looting', 'Ignore'],
 		                                          ['Try your luck looting the treasure',
-		                                           'Move on and treasure behind'])):
+		                                           'Move on and leave the treasure behind'])):
 			choice_btn = UIButton(text=choice,
 			                      relative_rect=Rect(0,
 			                                         starting_height + (i * btn_height),

@@ -377,7 +377,7 @@ while running:
 					if event_in_ui_element(event, action_window):
 						choice = action_window.check_clicked_choice(event.pos)
 						if choice is not None:
-							outcome_action = game_engine.attempt_disarm(choice)
+							outcome_action = game_engine.attempt_disarm()
 							messages.extend(outcome_action)
 							game_engine.state = GameState.IDLE
 							action_window.clear_choices()
@@ -385,8 +385,7 @@ while running:
 							                   level_preview=level_preview,
 							                   encounter_preview=encounter_preview)
 			elif heroes_player.type == PlayerType.RANDOM:
-				do_disarm = heroes_player.choose_disarm_trap()
-				outcome_action = game_engine.attempt_disarm(choice=0 if do_disarm else 1)
+				outcome_action = game_engine.attempt_disarm()
 				messages.extend(outcome_action)
 				game_engine.state = GameState.IDLE
 				action_window.clear_choices()
@@ -394,8 +393,7 @@ while running:
 				                   level_preview=level_preview,
 				                   encounter_preview=encounter_preview)
 			elif heroes_player.type == PlayerType.AI:
-				do_disarm = heroes_player.choose_disarm_trap()
-				outcome_action = game_engine.attempt_disarm(choice=0 if do_disarm else 1)
+				outcome_action = game_engine.attempt_disarm()
 				messages.extend(outcome_action)
 				game_engine.state = GameState.IDLE
 				action_window.clear_choices()
@@ -403,9 +401,7 @@ while running:
 				                   level_preview=level_preview,
 				                   encounter_preview=encounter_preview)
 			elif heroes_player.type == PlayerType.LLM:
-				heroes_player.context = cntxt_mngr.get_trap_context(game_engine=game_engine)
-				do_disarm = heroes_player.choose_disarm_trap()
-				outcome_action = game_engine.attempt_disarm(choice=0 if do_disarm else 1)
+				outcome_action = game_engine.attempt_disarm()
 				messages.extend(outcome_action)
 				game_engine.state = GameState.IDLE
 				action_window.clear_choices()
