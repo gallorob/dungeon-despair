@@ -145,7 +145,8 @@ def update_ui_actions(game_engine: GameEngine,
 	action_window.clear_choices()
 	action_window.clear_attacks()
 	if game_engine.state == GameState.IN_COMBAT:
-		action_window.display_attacks(attacks=game_engine.get_attacks())
+		action_window.display_attacks(attacks=game_engine.get_attacks(),
+		                              moving=game_engine.combat_engine.state == CombatPhase.CHOOSE_POSITION)
 	if game_engine.state == GameState.INSPECTING_TRAP:
 		action_window.display_trap_choices()
 	if game_engine.state == GameState.INSPECTING_TREASURE:
@@ -161,7 +162,8 @@ def check_and_start_encounter(game_engine: GameEngine,
 	                   encounter_preview=encounter_preview)
 	if game_engine.state == GameState.IN_COMBAT or game_engine.state == GameState.INSPECTING_TRAP or game_engine.state == GameState.INSPECTING_TREASURE:
 		if game_engine.state == GameState.IN_COMBAT:
-			action_window.display_attacks(game_engine.get_attacks())
+			action_window.display_attacks(game_engine.get_attacks(),
+			                              game_engine.combat_engine.state == CombatPhase.CHOOSE_POSITION)
 			attacker, attacker_idx = game_engine.get_current_attacker_with_idx()
 			encounter_preview.update_attacking(attacker_idx)
 		elif game_engine.state == GameState.INSPECTING_TRAP:
@@ -217,10 +219,11 @@ def update_targeted(event,
 
 
 def update_moving_to(event,
-                     encounter_preview: EncounterPreview):
+                     encounter_preview: EncounterPreview,
+                     attacker: Union[Hero, Enemy]):
 	sprite_idx = encounter_preview.check_clicked_entity(event.pos)
 	if sprite_idx is not None:
-		encounter_preview.update_moving_to(sprite_idx)
+		encounter_preview.update_moving_to(sprite_idx, attacker)
 
 
 def move_to_room(room_name: str,
@@ -434,11 +437,13 @@ while running:
 							                                          idx=attack_idx)
 							if game_engine.combat_engine.state == CombatPhase.PICK_ATTACK:
 								encounter_preview.moving_to.kill()
+								action_window.toggle_nonmove_actions()
 				# Moving mouse events
 				elif event.type == pygame.MOUSEMOTION:
 					# Display targeted entities when hovering over attacks
 					update_moving_to(event=event,
-					                 encounter_preview=encounter_preview)
+					                 encounter_preview=encounter_preview,
+					                 attacker=current_attacker)
 			elif current_player.type == PlayerType.RANDOM:
 				idx = current_player.pick_moving(attacker=current_attacker, heroes=game_engine.heroes.party, enemies=game_engine.combat_engine.current_encounter.get['enemy'])
 				move_msgs = game_engine.process_move(idx=idx)
@@ -477,6 +482,8 @@ while running:
 								update_targeted(event=event,
 								                encounter_preview=encounter_preview,
 								                action_window=action_window)
+							if game_engine.combat_engine.state == CombatPhase.CHOOSE_POSITION:
+								action_window.toggle_nonmove_actions()
 				# Moving mouse events
 				elif event.type == pygame.MOUSEMOTION:
 					# Display targeted entities when hovering over attacks

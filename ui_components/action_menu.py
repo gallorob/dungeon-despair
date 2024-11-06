@@ -5,6 +5,7 @@ from pygame_gui.core.interfaces import IUIManagerInterface
 from pygame_gui.elements import UIButton, UIWindow
 
 from dungeon_despair.domain.attack import Attack
+from dungeon_despair.domain.utils import AttackType
 from utils import rich_attack_description
 
 
@@ -26,7 +27,7 @@ class ActionWindow(UIWindow):
 			choice.kill()
 		self.choices = []
 	
-	def display_attacks(self, attacks: List[Attack]):
+	def display_attacks(self, attacks: List[Attack], moving: bool):
 		self.clear_attacks()
 		
 		btn_height = self.get_container().rect.height / 8
@@ -46,6 +47,7 @@ class ActionWindow(UIWindow):
 				attack_btn.enable()
 			else:
 				attack_btn.disable()
+			if attack.type != AttackType.MOVE and moving: attack_btn.disable()
 			self.attacks.append(attack_btn)
 	
 	def display_trap_choices(self):
@@ -103,3 +105,9 @@ class ActionWindow(UIWindow):
 			if attack.rect.collidepoint(pos) and attack.is_enabled:
 				return i
 		return None
+	
+	def toggle_nonmove_actions(self):
+		for attack in self.attacks:
+			if attack.text != 'Move':
+				if attack.is_enabled: attack.disable()
+				else: attack.enable()

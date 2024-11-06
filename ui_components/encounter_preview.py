@@ -1,5 +1,5 @@
 import os
-from typing import List, Optional
+from typing import List, Optional, Union
 
 import pygame
 from pygame import Rect
@@ -9,6 +9,8 @@ from pygame_gui.elements import UIImage, UILabel, UIWindow
 from configs import configs
 from dungeon_despair.domain.corridor import Corridor
 from dungeon_despair.domain.encounter import Encounter
+from dungeon_despair.domain.entities.enemy import Enemy
+from dungeon_despair.domain.entities.hero import Hero
 from dungeon_despair.domain.room import Room
 from heroes_party import HeroParty
 from utils import rich_entity_description
@@ -245,18 +247,20 @@ class EncounterPreview(UIWindow):
 		if self.moving_to:
 			self.moving_to.kill()
 		
-		ref_sprite = [*self.heroes, *self.enemies][sprite_idx]
-		# not sure why the +1, but it works this way :/
-		attacking_x = int(self.attacking.rect.x - ref_sprite.relative_rect.width / 2 + self.padding / 4) + 1
-		y_offset = (self.background_image.rect.height / 2) - (ref_sprite.relative_rect.height / 2) / 2 - self.padding / 4
-		self.moving_to = UIImage(
-			relative_rect=Rect(
-				ref_sprite.relative_rect.x + ref_sprite.relative_rect.width / 2 - self.padding / 4,
-				y_offset if (attacking_x != ref_sprite.rect.x) else y_offset - self.padding / 2,
-				self.padding / 2, self.padding / 2),
-			image_surface=pygame.image.load('assets/moving_icon.png'),
-			manager=self.ui_manager, container=self.get_container(),
-			parent_element=self,
-			starting_height=self.starting_height + 1
-		)
+		if (sprite_idx < len(self.heroes) and isinstance(attacker, Hero)) or \
+		   (sprite_idx >= len(self.heroes) and isinstance(attacker, Enemy)):
+			ref_sprite = [*self.heroes, *self.enemies][sprite_idx]
+			# not sure why the +1, but it works this way :/
+			attacking_x = int(self.attacking.rect.x - ref_sprite.relative_rect.width / 2 + self.padding / 4) + 1
+			y_offset = (self.background_image.rect.height / 2) - (ref_sprite.relative_rect.height / 2) / 2 - self.padding / 4
+			self.moving_to = UIImage(
+				relative_rect=Rect(
+					ref_sprite.relative_rect.x + ref_sprite.relative_rect.width / 2 - self.padding / 4,
+					y_offset if (attacking_x != ref_sprite.rect.x) else y_offset - self.padding / 2,
+					self.padding / 2, self.padding / 2),
+				image_surface=pygame.image.load('assets/moving_icon.png'),
+				manager=self.ui_manager, container=self.get_container(),
+				parent_element=self,
+				starting_height=self.starting_height + 1
+			)
 		
