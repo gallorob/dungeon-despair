@@ -139,6 +139,11 @@ def update_ui_previews(game_engine: GameEngine,
 	encounter_preview.display_encounter(curr_encounter)
 	encounter_preview.display_heroes(game_engine.get_heroes_party())
 	encounter_preview.update_targeted([])
+	encounter_preview.update_modifiers(heroes=game_engine.heroes,
+	                                   enemies=get_current_encounter(level=game_engine.game_data,
+	                                                                 encounter_idx=game_engine.movement_engine.encounter_idx).entities[
+		                                   'enemy'])
+	
 	encounter_preview.display_stress_level(game_engine.stress)
 
 
@@ -311,6 +316,9 @@ while running:
 								                                         game_engine.game_data)
 								messages.extend(game_engine.process_modifiers())
 								messages.extend(game_engine.check_dead_entities())
+								encounter_preview.update_modifiers(heroes=game_engine.heroes,
+								                                   enemies=get_current_encounter(level=game_engine.game_data,
+								                                                                 encounter_idx=game_engine.movement_engine.encounter_idx).entities['enemy'])
 							else:
 								messages.append(err_msg)
 			elif heroes_player.type == PlayerType.RANDOM:
@@ -438,6 +446,10 @@ while running:
 					if sprite_idx is not None:
 						move_msgs = game_engine.process_move(idx=sprite_idx)
 						messages.extend(move_msgs)
+						encounter_preview.update_modifiers(heroes=game_engine.heroes,
+						                                   enemies=get_current_encounter(level=game_engine.game_data,
+						                                                                 encounter_idx=game_engine.movement_engine.encounter_idx).entities[
+							                                   'enemy'])
 						encounter_preview.display_stress_level(game_engine.stress)
 						check_aftermath(game_engine=game_engine,
 						                level_preview=level_preview,
@@ -496,6 +508,12 @@ while running:
 							                level_preview=level_preview,
 							                encounter_preview=encounter_preview,
 							                action_window=action_window)
+							encounter_preview.update_modifiers(heroes=game_engine.heroes,
+							                                   enemies=
+							                                   get_current_encounter(level=game_engine.game_data,
+							                                                         encounter_idx=game_engine.movement_engine.encounter_idx).entities[
+								                                   'enemy'])
+							
 							if game_engine.state == GameState.IN_COMBAT:
 								update_targeted(event=event,
 								                encounter_preview=encounter_preview,

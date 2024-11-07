@@ -33,6 +33,7 @@ class EncounterPreview(UIWindow):
 		self.attacking: Optional[UIImage] = None
 		self.targeted: List[UIImage] = []
 		self.moving_to: UIImage = None
+		self.modifiers: List[UIImage] = []
 	
 	def display_stress_level(self, stress: int):
 		if self.stress_level is None:
@@ -264,4 +265,44 @@ class EncounterPreview(UIWindow):
 				parent_element=self,
 				starting_height=self.starting_height + 1
 			)
+	
+	def update_modifiers(self, heroes: HeroParty, enemies: List[Enemy]):
+		for modifier in self.modifiers:
+			modifier.kill()
 		
+		for i, hero in enumerate(heroes.party):
+			for j, modifier in enumerate(hero.modifiers):
+				ref_sprite = self.heroes[i]
+				y_offset = (self.background_image.rect.height / 2) + ref_sprite.relative_rect.height + self.padding / 5
+				modifier_icon = UIImage(
+					relative_rect=Rect(
+						ref_sprite.relative_rect.x + ref_sprite.relative_rect.width / 2 - self.padding / 5 + (j * self.padding / 5),
+						y_offset,
+						self.padding / 5, self.padding / 5
+					),
+					image_surface=pygame.image.load(f'assets/{modifier.type}_icon.png'),
+					manager=self.ui_manager, container=self.get_container(),
+					parent_element=self,
+					starting_height=self.starting_height + 1
+				)
+				modifier_icon.set_tooltip(str(modifier))
+				self.modifiers.append(modifier_icon)
+		
+		for i, enemy in enumerate(enemies):
+			for modifier in enemy.modifiers:
+				ref_sprite = self.enemies[i]
+				y_offset = (self.background_image.rect.height / 2) - (
+							ref_sprite.relative_rect.height / 2) / 2 - self.padding / 8
+				modifier_icon = UIImage(
+					relative_rect=Rect(
+						ref_sprite.relative_rect.x + ref_sprite.relative_rect.width / 2 - self.padding / 8,
+						y_offset,
+						self.padding / 8, self.padding / 8
+					),
+					image_surface=pygame.image.load(f'assets/{modifier.type}_icon.png'),
+					manager=self.ui_manager, container=self.get_container(),
+					parent_element=self,
+					starting_height=self.starting_height + 1
+				)
+				modifier_icon.set_tooltip(str(modifier))
+				self.modifiers.append(modifier_icon)

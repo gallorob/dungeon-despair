@@ -157,7 +157,7 @@ class GameEngine:
 					entity.hp -= modifier.amount
 					self.stress += modifier.amount * (1 if isinstance(entity, Hero) else -1)
 					msgs.append(f'<b>{entity.name}</b> takes {modifier.amount} damage from {modifier.type}!')
-				elif modifier_type == ModifierType.HEALING:
+				elif modifier_type == ModifierType.HEAL:
 					heal_amount = min(modifier.amount, entity.max_hp - entity.hp)
 					entity.hp += heal_amount
 					self.stress -= heal_amount * (1 if isinstance(entity, Hero) else -1)

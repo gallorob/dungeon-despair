@@ -1,6 +1,7 @@
 from dungeon_despair.domain.attack import Attack
 from dungeon_despair.domain.entities.hero import Hero
-from dungeon_despair.domain.utils import AttackType
+from dungeon_despair.domain.modifier import Modifier
+from dungeon_despair.domain.utils import AttackType, ModifierType
 
 
 class HeroParty:
@@ -36,6 +37,10 @@ def get_temp_heroes():
 		     spd=0.2,
 		     trap_resist=0.1,
 		     stress_resist=0.0,
+		     modifiers=[Modifier(type=ModifierType.BLEED,
+		                         chance=1.0,
+		                         turns=5,
+		                         amount=1.0)],
 		     attacks=[
 			     Attack(name='Blade of Valor',
 			            description='Gareth swings his large sword in a powerful arc.',
@@ -68,6 +73,15 @@ def get_temp_heroes():
 		     spd=0.1,
 		     trap_resist=0.1,
 		     stress_resist=0.0,
+		     modifiers=[Modifier(type=ModifierType.STUN,
+		                         chance=1.0,
+		                         turns=3,
+		                         amount=0.0),
+		                Modifier(type=ModifierType.HEAL,
+		                         chance=1.0,
+		                         turns=2,
+		                         amount=4.0)
+		                ],
 		     attacks=[
 			     Attack(name='Divine Light',
 			            description='Elira calls down a beam of holy light to smite her enemies.',
@@ -132,6 +146,10 @@ def get_temp_heroes():
 		     spd=0.8,
 		     trap_resist=0.1,
 		     stress_resist=0.0,
+		     modifiers=[Modifier(type=ModifierType.SCARE,
+		                         chance=1.0,
+		                         turns=-1,
+		                         amount=0.25)],
 		     attacks=[
 			     Attack(name='Shadow Strike',
 			            description='Milo darts through the shadows, striking from an unexpected angle.',
