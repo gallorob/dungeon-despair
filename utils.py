@@ -59,15 +59,18 @@ def rich_entity_description(entity: Entity) -> str:
 def rich_attack_description(attack: Attack) -> str:
 	attack_type = get_enum_by_value(AttackType, attack.type)
 	if attack_type == AttackType.MOVE:
-		return f'<b>Move</b>: <i>Move to another position within the group.</i>'
+		s = f'<b>Move</b>: <i>Move to another position within the group.</i>'
 	elif attack_type == AttackType.PASS:
-		return f'<b>Pass</b>: <i>Skip the current turn.</i>'
+		s = f'<b>Pass</b>: <i>Skip the current turn.</i>'
 	elif attack_type == AttackType.DAMAGE:
-		return f'<b>{attack.name}</b>:  <i>{attack.description}</i> (DMG: {attack.base_dmg} {attack.accuracy:.2%} FROM: {attack.starting_positions} TO: {attack.target_positions})'
+		s = f'<b>{attack.name}</b>:  <i>{attack.description}</i> (DMG: {attack.base_dmg}HP {attack.accuracy:.0%} FROM: {attack.starting_positions} TO: {attack.target_positions})'
 	elif attack_type == AttackType.HEAL:
-		return f'<b>{attack.name}</b>:  <i>{attack.description}</i> (HEAL: {attack.base_dmg} FROM: {attack.starting_positions} TO: {attack.target_positions})'
+		s = f'<b>{attack.name}</b>:  <i>{attack.description}</i> (HEAL: {-attack.base_dmg}HP FROM: {attack.starting_positions} TO: {attack.target_positions})'
 	else:
 		raise NotImplementedError(f'Unknown attack type: {attack.type}')
+	if attack.modifier:
+		s += f'\n{str(attack.modifier)}'
+	return s
 
 def set_ingame_properties(game_data: Level, heroes: HeroParty) -> None:
 	for hero in heroes.party:

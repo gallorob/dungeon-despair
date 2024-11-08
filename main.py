@@ -29,18 +29,18 @@ from ui_components.level_preview import LevelPreview
 from utils import get_current_room, get_current_encounter, set_ingame_properties
 
 # clear assets folder on exec
-if os.path.exists(os.path.join(configs.assets, 'dungeon_assets')):
-	for file in os.listdir(os.path.join(configs.assets, 'dungeon_assets')):
-		if os.path.isfile(os.path.join(configs.assets, 'dungeon_assets', file)):
-			os.remove(os.path.join(configs.assets, 'dungeon_assets', file))
-ddd_config.temp_dir = os.path.join(configs.assets, 'dungeon_assets')
+if os.path.exists(configs.assets.dungeon_dir):
+	for file in os.listdir(configs.assets.dungeon_dir):
+		if os.path.isfile(os.path.join(configs.assets.dungeon_dir, file)):
+			os.remove(os.path.join(configs.assets.dungeon_dir, file))
+ddd_config.temp_dir = configs.assets.dungeon_dir
 
 pygame.init()
 
 # Initialize the screen
 screen = pygame.display.set_mode((configs.ui.screen_width, configs.ui.screen_height))
 pygame.display.set_caption("Dungeon Despair")
-pygame.display.set_icon(pygame.image.load('./assets/dungeon_despair_logo.png'))
+pygame.display.set_icon(pygame.image.load(configs.assets.logo))
 
 # Create the UI manager
 ui_manager = pygame_gui.UIManager((screen.get_width(), screen.get_height()))
@@ -116,6 +116,11 @@ messages = []
 # Context manager for the LLM player
 cntxt_mngr = ContextManager()
 
+# TODO: Make a main menu, scenario selection, buttons etc...
+class AppState(Enum):
+	IN_MAIN_MENU = auto()
+	IN_LOADING_SCENARIO = auto()
+	IN_GAME = auto()
 
 def update_ui_previews(game_engine: GameEngine,
                        level_preview: LevelPreview,

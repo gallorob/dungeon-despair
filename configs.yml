@@ -8,7 +8,22 @@ ui:
   minimap:
     room_scale: 0.15
     corridor_scale: 0.075
-assets: './assets'
+assets:
+  dungeon_dir: './assets/dungeon_assets'
+  logo: './assets/dungeon_despair_logo.png'
+  screens:
+    background: './assets/screens/background.png'
+    gameover: './assets/screens/gameover.png'
+  icons:
+    combat:
+      attacking: './assets/icons/attacking_icon.png'
+      moving: './assets/icons/moving_icon.png'
+      targeted: './assets/icons/targeted_icon.png'
+    modifiers:
+      bleed: './assets/icons/bleed_icon.png'
+      heal: './assets/icons/heal_icon.png'
+      stun: './assets/icons/stun_icon.png'
+      scare: './assets/icons/scare_icon.png'
 
 game:
   stress:

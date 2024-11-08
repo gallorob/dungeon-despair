@@ -16,8 +16,8 @@ class GameOver(UIWindow):
 		                 always_on_top=True)
 		
 		self.imgs = [
-			pygame.image.load(os.path.join(configs.assets, 'heroes_gameover_screen.jpeg')).convert_alpha(),
-			pygame.image.load(os.path.join(configs.assets, 'enemies_gameover_screen.jpeg')).convert_alpha()
+			pygame.image.load(configs.assets.screens.gameover).convert_alpha(),
+			pygame.image.load(configs.assets.screens.gameover).convert_alpha()
 		]
 		for img in self.imgs:
 			img.set_alpha(0)

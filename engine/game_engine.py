@@ -112,17 +112,21 @@ class GameEngine:
 			if isinstance(current_attacker, Enemy):
 				attack_mask = list(reversed(attack_mask))
 			attack_offset = 0 if isinstance(current_attacker, Enemy) else len(self.heroes.party)
-			target_idxs = [i + attack_offset for i in range(min(len(attack_mask), len(positioned_entities) - attack_offset))
-			               if attack_mask[i]]
-			return target_idxs
+			# target_idxs = [i + attack_offset for i in range(min(len(attack_mask), len(positioned_entities) - attack_offset))
+			#                if attack_mask[i]]
+			targets_n = len(positioned_entities) - len(self.heroes.party) if isinstance(current_attacker, Hero) else len(
+				self.heroes.party)
+			targets = [1 if i < targets_n else 0 for i in range(len(attack_mask))]
+			target_and = [1 if (i == 1 and j == 1) else 0 for i, j in zip(attack_mask, targets)]
+			return [attack_offset + i for i in range(len(target_and)) if target_and[i] == 1]
 		elif attack_type == AttackType.HEAL:
 			if isinstance(current_attacker, Hero):
 				attack_mask = list(reversed(attack_mask))
-				attack_offset = 0 if isinstance(current_attacker, Hero) else len(positioned_entities) - len(self.heroes.party)
-				target_idxs = [i + attack_offset for i in
-				               range(min(len(attack_mask), len(positioned_entities) - attack_offset))
-				               if attack_mask[i]]
-				return target_idxs
+			attack_offset = 0 if isinstance(current_attacker, Hero) else len(positioned_entities) - len(self.heroes.party)
+			target_idxs = [i + attack_offset for i in
+			               range(min(len(attack_mask), len(positioned_entities) - attack_offset))
+			               if attack_mask[i]]
+			return target_idxs
 		else:
 			raise NotImplementedError(f'Unknown attack type: {attack_type.value}')
 	

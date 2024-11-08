@@ -1,4 +1,5 @@
 import os
+from multiprocessing.managers import Value
 from typing import List, Optional, Union
 
 import pygame
@@ -13,6 +14,7 @@ from dungeon_despair.domain.entities.enemy import Enemy
 from dungeon_despair.domain.entities.hero import Hero
 from dungeon_despair.domain.room import Room
 from dungeon_despair.domain.configs import config as ddd_config
+from dungeon_despair.domain.utils import ModifierType, get_enum_by_value
 from heroes_party import HeroParty
 from utils import rich_entity_description
 
@@ -96,7 +98,7 @@ class EncounterPreview(UIWindow):
 			self.stress_level.kill()
 		self.background_image = None
 		self.stress_level = None
-		area_image = pygame.image.load(os.path.join(configs.assets, 'dungeon_assets', room.sprite))
+		area_image = pygame.image.load(os.path.join(configs.assets.dungeon_dir, room.sprite))
 		scale_factor = min(self.get_container().rect.width / area_image.get_width(),
 		                   self.get_container().rect.height / area_image.get_height())
 		area_image = pygame.transform.scale(area_image, (int(scale_factor * area_image.get_width()),
@@ -124,7 +126,7 @@ class EncounterPreview(UIWindow):
 			entity_width = (x_offset - self.padding) / max_n
 			cum_padding = self.padding
 			for i, entity in enumerate(encounter.entities[entity_type]):
-				entity_image = pygame.image.load(os.path.join(configs.assets, 'dungeon_assets', entity.sprite))
+				entity_image = pygame.image.load(os.path.join(configs.assets.dungeon_dir, entity.sprite))
 				r = entity_width / entity_image.get_width()
 				entity_sprite = UIImage(
 					relative_rect=Rect(
@@ -209,7 +211,7 @@ class EncounterPreview(UIWindow):
 				y_offset - (ref_sprite.relative_rect.height / 2) / 2 - self.padding / 4,
 				self.padding / 2,
 				self.padding / 2),
-			image_surface=pygame.image.load('assets/attacking_icon.png'),
+			image_surface=pygame.image.load(configs.assets.icons.combat.attacking),
 			manager=self.ui_manager, container=self.get_container(),
 			parent_element=self,
 			starting_height=self.starting_height + 1
@@ -230,7 +232,7 @@ class EncounterPreview(UIWindow):
 					ref_sprite.relative_rect.x + ref_sprite.relative_rect.width / 2 - self.padding / 4,
 					y_offset if (attacking_x != ref_sprite.rect.x) else y_offset - self.padding / 2,
 					self.padding / 2, self.padding / 2),
-				image_surface=pygame.image.load('assets/targeted_icon.png'),
+				image_surface=pygame.image.load(configs.assets.icons.combat.targeted),
 				manager=self.ui_manager, container=self.get_container(),
 				parent_element=self,
 				starting_height=self.starting_height + 1
@@ -260,13 +262,25 @@ class EncounterPreview(UIWindow):
 					ref_sprite.relative_rect.x + ref_sprite.relative_rect.width / 2 - self.padding / 4,
 					y_offset if (attacking_x != ref_sprite.rect.x) else y_offset - self.padding / 2,
 					self.padding / 2, self.padding / 2),
-				image_surface=pygame.image.load('assets/moving_icon.png'),
+				image_surface=pygame.image.load(configs.assets.icons.moving),
 				manager=self.ui_manager, container=self.get_container(),
 				parent_element=self,
 				starting_height=self.starting_height + 1
 			)
 	
 	def update_modifiers(self, heroes: HeroParty, enemies: List[Enemy]):
+		def get_icon(modifer_type: ModifierType):
+			if modifer_type == ModifierType.BLEED:
+				return configs.assets.icons.modifiers.bleed
+			elif modifer_type == ModifierType.HEAL:
+				return configs.assets.icons.modifiers.heal
+			elif modifer_type == ModifierType.SCARE:
+				return configs.assets.icons.modifiers.scare
+			elif modifer_type == ModifierType.STUN:
+				return configs.assets.icons.modifiers.stun
+			else:
+				raise ValueError(f'Unknown modifier type: {modifer_type.value}')
+		
 		for modifier in self.modifiers:
 			modifier.kill()
 		
@@ -280,7 +294,7 @@ class EncounterPreview(UIWindow):
 						y_offset,
 						self.padding / 5, self.padding / 5
 					),
-					image_surface=pygame.image.load(f'assets/{modifier.type}_icon.png'),
+					image_surface=pygame.image.load(get_icon(get_enum_by_value(ModifierType, modifier.type))),
 					manager=self.ui_manager, container=self.get_container(),
 					parent_element=self,
 					starting_height=self.starting_height + 1
@@ -299,7 +313,7 @@ class EncounterPreview(UIWindow):
 						y_offset,
 						self.padding / 8, self.padding / 8
 					),
-					image_surface=pygame.image.load(f'assets/{modifier.type}_icon.png'),
+					image_surface=pygame.image.load(get_icon(get_enum_by_value(ModifierType, modifier.type))),
 					manager=self.ui_manager, container=self.get_container(),
 					parent_element=self,
 					starting_height=self.starting_height + 1
