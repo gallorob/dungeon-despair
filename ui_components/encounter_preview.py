@@ -1,5 +1,4 @@
 import os
-from multiprocessing.managers import Value
 from typing import List, Optional, Union
 
 import pygame
@@ -57,9 +56,9 @@ class EncounterPreview(UIWindow):
 		self.background_image = None
 		self.stress_level = None
 		
-		before_image = pygame.image.load(os.path.join(configs.assets, 'dungeon_assets', corridor.sprites[idx]))
-		area_image = pygame.image.load(os.path.join(configs.assets, 'dungeon_assets', corridor.sprites[idx + 1]))
-		after_image = pygame.image.load(os.path.join(configs.assets, 'dungeon_assets', corridor.sprites[idx + 2]))
+		before_image = pygame.image.load(os.path.join(configs.assets.dungeon_dir, corridor.sprites[idx]))
+		area_image = pygame.image.load(os.path.join(configs.assets.dungeon_dir, corridor.sprites[idx + 1]))
+		after_image = pygame.image.load(os.path.join(configs.assets.dungeon_dir, corridor.sprites[idx + 2]))
 		
 		scale_factor = self.get_container().rect.height / area_image.get_height()
 		new_width, new_height = int(scale_factor * area_image.get_width()), int(scale_factor * area_image.get_height())
@@ -241,7 +240,7 @@ class EncounterPreview(UIWindow):
 	def update(self, time_delta: float):
 		super().update(time_delta)
 	
-	def check_clicked_entity(self, pos):
+	def check_colliding_entity(self, pos):
 		for i, sprite in enumerate([*self.heroes, *self.enemies]):
 			if sprite.rect.collidepoint(pos):
 				return i
@@ -262,24 +261,24 @@ class EncounterPreview(UIWindow):
 					ref_sprite.relative_rect.x + ref_sprite.relative_rect.width / 2 - self.padding / 4,
 					y_offset if (attacking_x != ref_sprite.rect.x) else y_offset - self.padding / 2,
 					self.padding / 2, self.padding / 2),
-				image_surface=pygame.image.load(configs.assets.icons.moving),
+				image_surface=pygame.image.load(configs.assets.icons.combat.moving),
 				manager=self.ui_manager, container=self.get_container(),
 				parent_element=self,
 				starting_height=self.starting_height + 1
 			)
 	
 	def update_modifiers(self, heroes: HeroParty, enemies: List[Enemy]):
-		def get_icon(modifer_type: ModifierType):
-			if modifer_type == ModifierType.BLEED:
+		def get_icon(modifier_type: ModifierType):
+			if modifier_type == ModifierType.BLEED:
 				return configs.assets.icons.modifiers.bleed
-			elif modifer_type == ModifierType.HEAL:
+			elif modifier_type == ModifierType.HEAL:
 				return configs.assets.icons.modifiers.heal
-			elif modifer_type == ModifierType.SCARE:
+			elif modifier_type == ModifierType.SCARE:
 				return configs.assets.icons.modifiers.scare
-			elif modifer_type == ModifierType.STUN:
+			elif modifier_type == ModifierType.STUN:
 				return configs.assets.icons.modifiers.stun
 			else:
-				raise ValueError(f'Unknown modifier type: {modifer_type.value}')
+				raise ValueError(f'Unknown modifier type: {modifier_type.value}')
 		
 		for modifier in self.modifiers:
 			modifier.kill()

@@ -29,9 +29,9 @@ class LevelPreview(UIWindow):
 		self._map_idxs: Dict[UIButton, int] = {}
 	
 	def get_encounter_text(self, encounter: Encounter):
-		enemies_text = f'x{len(encounter.entities["enemy"])}' if len(encounter.entities["enemy"]) > 0 else '0'
-		trap_text = ', X' if len(encounter.entities["trap"]) > 0 else ''
-		treasure_text = ', $' if len(encounter.entities["treasure"]) > 0 else ''
+		enemies_text = f'x{len(encounter.enemies)}' if len(encounter.enemies) > 0 else '0'
+		trap_text = ',X' if len(encounter.traps) > 0 else ''
+		treasure_text = ',$' if len(encounter.treasures) > 0 else ''
 		return f'{enemies_text}{trap_text}{treasure_text}'
 	
 	def update_button_text(self, encounter: Encounter, roomcorridor_name: str, encounter_idx: int = -1):

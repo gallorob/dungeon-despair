@@ -35,7 +35,7 @@ game:
     trigger_trapped_treasure: 12
     no_inspect_treasure: -5
     ignore_treasure: 5
-    hero_kill_enemy: -10
-    enemy_kill_hero: 50
+    enemy_dies: -10
+    hero_dies: 50
     passing: 10
     switch_position: 10

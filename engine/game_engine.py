@@ -1,19 +1,17 @@
 from enum import Enum, auto
-from typing import List, Tuple, Union
+from typing import List, Tuple, Union, Optional
 
-from configs import configs
 from dungeon_despair.domain.attack import Attack
-from dungeon_despair.domain.entities.enemy import Enemy
 from dungeon_despair.domain.entities.entity import Entity
 from dungeon_despair.domain.level import Level
-from dungeon_despair.domain.modifier import Modifier
-from dungeon_despair.domain.utils import get_enum_by_value, AttackType, ModifierType
-from engine.actions_engine import ActionEngine
-from engine.combat_engine import CombatEngine
+from engine.actions_engine import ActionEngine, LootingChoice
+from engine.combat_engine import CombatEngine, CombatPhase
+from engine.message_system import msg_system
+from engine.modifier_system import ModifierSystem
 from engine.movement_engine import MovementEngine
-from heroes_party import get_temp_heroes, Hero
-from player.base_player import Player, PlayerType
-from utils import get_current_encounter
+from engine.stress_system import stress_system
+from heroes_party import get_temp_heroes, Hero, HeroParty
+from player.base_player import Player
 
 
 class GameState(Enum):
@@ -22,215 +20,185 @@ class GameState(Enum):
 	IN_COMBAT: int = auto()
 	INSPECTING_TRAP: int = auto()
 	INSPECTING_TREASURE: int = auto()
-	HEROES_WON: int = auto()
-	ENEMIES_WON: int = auto()
+	GAME_OVER: int = auto()
 
 
 class GameEngine:
 	def __init__(self,
 	             heroes_player: Player,
 	             enemies_player: Player):
+		self.heroes_player = heroes_player
+		self.enemies_player = enemies_player
+		
 		self.combat_engine = CombatEngine()
 		self.movement_engine = MovementEngine()
 		self.actions_engine = ActionEngine()
 		
-		self.heroes_player = heroes_player
-		self.heroes = get_temp_heroes()
-		self.stress = 0
-		
-		self.enemies_player = enemies_player
+		self.heroes: Optional[HeroParty] = None
 		
 		self.state = GameState.LOADING
-		self.game_data = None
+		self.scenario = None
 	
 	def set_level(self, level: Level) -> None:
-		self.game_data = level
+		'''Set the scenario and prepare to play'''
+		self.scenario = level
 		self.state = GameState.IDLE
+		self.move_to(area=self.scenario.current_room)
+	
+	def tick(self):
+		'''Update the state of the game based on the current scenario state'''
+		def try_combat():
+			if len(self.movement_engine.current_encounter.enemies) > 0:
+				self.state = GameState.IN_COMBAT
+				ModifierSystem.apply_and_tick_modifiers(self.heroes.party)  # Apply now in case there is a stun
+				self.combat_engine.start_encounter(encounter=self.movement_engine.current_encounter,
+				                                   heroes=self.heroes)  # TODO
+				self.combat_engine.start_turn(heroes=self.heroes,
+				                              enemies=self.movement_engine.current_encounter.enemies)
 		
-		self.move_to_room(room_name=self.game_data.current_room)
-	
-	def get_heroes_party(self):
-		return self.heroes
-	
-	def update_state(self) -> List[str]:
-		current_encounter = get_current_encounter(level=self.game_data,
-		                                          encounter_idx=self.movement_engine.encounter_idx)
-		if len(current_encounter.entities.get('enemy', [])) > 0:
-			self.state = GameState.IN_COMBAT
-			msgs, stress_delta = self.combat_engine.start_encounter(current_encounter, self.heroes, self.game_data)
-			self.stress += stress_delta
-			return msgs
-		elif len(current_encounter.entities.get('trap', [])) > 0:
-			self.state = GameState.INSPECTING_TRAP
-			return self.actions_engine.init_trap_encounter(current_encounter)
-		elif len(current_encounter.entities.get('treasure', [])) > 0:
-			self.state = GameState.INSPECTING_TREASURE
-			return self.actions_engine.init_treasure_encounter(current_encounter)
-		else:
-			self.state = GameState.IDLE
+		def try_trap():
+			if len(self.movement_engine.current_encounter.traps) > 0:
+				self.state = GameState.INSPECTING_TRAP
+				ModifierSystem.apply_and_tick_modifiers(self.heroes.party)
+				trap = self.movement_engine.current_encounter.traps[0]
+				msg_system.add_msg(f'You find <b>{trap.name}</b>!')
 		
-		return []
-	
-	def move_to_room(self, room_name: str, encounter_idx: int = -1) -> List[str]:
-		msgs, diff_stress = self.movement_engine.move_to_room(level=self.game_data,
-		                                                      dest_room_name=room_name,
-		                                                      encounter_idx=encounter_idx)
-		if len(msgs) > 0:  # movement was successful
-			if self.heroes_player.type == PlayerType.AI:
-				area_name = f'{room_name}_{encounter_idx}'
-				if area_name in self.heroes_player.visited_areas.keys():
-					self.heroes_player.visited_areas[area_name] += 1
-				else:
-					self.heroes_player.visited_areas[area_name] = 1
-		self.stress += diff_stress
-		return msgs
-	
-	def get_attacks(self) -> List[Attack]:
-		return self.combat_engine.get_attacks(self.heroes, self.game_data)
-	
-	def get_attacker_idx(self) -> int:
-		entity = self.combat_engine.currently_attacking()
-		return self.combat_engine.get_entities(self.heroes, self.game_data).index(entity)
-	
-	def process_attack(self, attack_idx) -> List[str]:
-		attack_stress, attack_msgs = self.combat_engine.process_attack(self.heroes, self.game_data, attack_idx)
-		self.stress += attack_stress
-		return attack_msgs
-	
-	def get_targeted_idxs(self, attack_idx: int) -> List[int]:
-		positioned_entities = self.combat_engine.get_entities(self.heroes, self.game_data)
-		current_attacker = self.combat_engine.currently_attacking()
-		attack = current_attacker.attacks[attack_idx] if attack_idx < len(
-			current_attacker.attacks) else self.combat_engine.extra_actions[attack_idx - len(current_attacker.attacks)]
-		attack_mask = self.combat_engine.convert_attack_mask(attack.target_positions)
-		attack_type = get_enum_by_value(AttackType, attack.type)
-		if attack_type == AttackType.MOVE:
-			return []
-		elif attack_type == AttackType.PASS:
-			return []
-		elif attack_type == AttackType.DAMAGE:
-			if isinstance(current_attacker, Enemy):
-				attack_mask = list(reversed(attack_mask))
-			attack_offset = 0 if isinstance(current_attacker, Enemy) else len(self.heroes.party)
-			# target_idxs = [i + attack_offset for i in range(min(len(attack_mask), len(positioned_entities) - attack_offset))
-			#                if attack_mask[i]]
-			targets_n = len(positioned_entities) - len(self.heroes.party) if isinstance(current_attacker, Hero) else len(
-				self.heroes.party)
-			targets = [1 if i < targets_n else 0 for i in range(len(attack_mask))]
-			target_and = [1 if (i == 1 and j == 1) else 0 for i, j in zip(attack_mask, targets)]
-			return [attack_offset + i for i in range(len(target_and)) if target_and[i] == 1]
-		elif attack_type == AttackType.HEAL:
-			if isinstance(current_attacker, Hero):
-				attack_mask = list(reversed(attack_mask))
-			attack_offset = 0 if isinstance(current_attacker, Hero) else len(positioned_entities) - len(self.heroes.party)
-			target_idxs = [i + attack_offset for i in
-			               range(min(len(attack_mask), len(positioned_entities) - attack_offset))
-			               if attack_mask[i]]
-			return target_idxs
-		else:
-			raise NotImplementedError(f'Unknown attack type: {attack_type.value}')
-	
-	def check_dead_entities(self):
-		dead_stress, dead_msgs = self.combat_engine.process_dead_entities(self.heroes, self.game_data)
-		self.stress += dead_stress
-		return dead_msgs
-	
-	def check_end_encounter(self) -> List[str]:
-		if self.combat_engine.is_encounter_over(self.heroes, self.game_data):
-			msgs = ['<i><b>### END OF ENCOUNTER</i></b>']
-			msgs.extend(self.update_state())
-			return msgs
-		return []
-	
-	def next_turn(self) -> List[str]:
-		msgs = []
-		if self.combat_engine.currently_active >= len(self.combat_engine.sorted_entities):
-			stress_delta = self.combat_engine.start_turn(self.heroes, self.game_data)
-			self.stress += stress_delta
-			msgs.append(f'<i>Turn {self.combat_engine.turn_number}:</i>')
-		attacker = self.combat_engine.currently_attacking()
-		msgs.append(f'Attacking: <b>{attacker.name}</b>')
-		return msgs
-	
-	def process_modifiers(self) -> List[str]:
-		def process_entity_modifiers(entity: Union[Hero, Enemy]) -> List[str]:
-			msgs = []
-			for modifier in entity.modifiers:
-				modifier_type = get_enum_by_value(ModifierType, modifier.type)
-				if modifier_type == ModifierType.BLEED:
-					entity.hp -= modifier.amount
-					self.stress += modifier.amount * (1 if isinstance(entity, Hero) else -1)
-					msgs.append(f'<b>{entity.name}</b> takes {modifier.amount} damage from {modifier.type}!')
-				elif modifier_type == ModifierType.HEAL:
-					heal_amount = min(modifier.amount, entity.max_hp - entity.hp)
-					entity.hp += heal_amount
-					self.stress -= heal_amount * (1 if isinstance(entity, Hero) else -1)
-					msgs.append(f'<b>{entity.name}</b> heals {heal_amount} points via {modifier.type}!')
-			return msgs
+		def try_treasure():
+			if len(self.movement_engine.current_encounter.treasures) > 0:
+				self.state = GameState.INSPECTING_TREASURE
+				ModifierSystem.apply_and_tick_modifiers(self.heroes.party)
+				treasure = self.movement_engine.current_encounter.treasures[0]
+				msg_system.add_msg(f'You find <b>{treasure.name}</b>!')
 		
-		msgs = []
-		# Process and apply all modifiers
+		# Check for dead entities
+		self.check_for_dead()
+		# Update the game state, if possible
+		if self.state == GameState.IDLE:
+			try_combat()
+		if self.state == GameState.IDLE:
+			try_trap()
+		if self.state == GameState.IDLE:
+			try_treasure()
+		if self.state == GameState.IN_COMBAT:
+			if self.combat_engine.state == CombatPhase.PICK_ATTACK:
+				self.combat_engine.tick(heroes=self.heroes)
+			if self.combat_engine.state == CombatPhase.END_OF_TURN:
+				# Apply and tick down modifiers that are still active to heroes
+				ModifierSystem.apply_and_tick_modifiers(self.heroes.party)
+				# Apply modifiers that are still active to enemies, if there are any
+				ModifierSystem.apply_and_tick_modifiers(self.movement_engine.current_encounter.enemies)
+				# Check for dead entities
+				self.check_for_dead()
+				self.combat_engine.start_turn(heroes=self.heroes,
+				                              enemies=self.movement_engine.current_encounter.enemies)
+			elif self.combat_engine.state == CombatPhase.END_OF_COMBAT:
+				self.state = GameState.IDLE
+				if self.state == GameState.IDLE:
+					try_trap()
+				if self.state == GameState.IDLE:
+					try_treasure()
+				if self.state == GameState.IDLE:
+					self.check_for_dead()
+		if self.state == GameState.IDLE:
+			ModifierSystem.apply_and_tick_modifiers(self.heroes.party)
+			# Check for dead entities
+			self.check_for_dead()
+			self.check_game_over()
+		
+	def move_to(self,
+	            area: str,
+	            encounter_idx: int = -1):
+		'''Move the hero party to another area of the level'''
+		if self.movement_engine.current_room is None or \
+				self.movement_engine.reachable(level=self.scenario,
+				                               dest_name=area,
+				                               idx=encounter_idx):
+			self.movement_engine.move_to(level=self.scenario,
+			                             dest_name=area,
+			                             encounter_idx=encounter_idx)
+			self.tick()
+	
+	@property
+	def current_room(self):
+		return self.movement_engine.current_room
+	
+	@property
+	def current_encounter(self):
+		return self.movement_engine.current_encounter
+	
+	@property
+	def actions(self) -> List[Attack]:
+		'''Get the current attacker's attacks'''
+		return self.combat_engine.actions
+	
+	@property
+	def attacker_and_idx(self) -> Tuple[Union[Hero, Entity], int]:
+		'''Get the current attacker and its index in the positioned entities in the current encounter'''
+		entity = self.combat_engine.attacker
+		return entity, [*self.heroes.party, *self.movement_engine.current_encounter.enemies].index(entity)
+	
+	@property
+	def player(self) -> Player:
+		return self.heroes_player if isinstance(self.combat_engine.attacker, Hero) else self.enemies_player
+	
+	def process_attack(self,
+	                   attack_idx: int) -> None:
+		'''Process the attack with the provided index'''
+		self.combat_engine.process_attack(heroes=self.heroes,
+		                                  idx=attack_idx)
+	
+	def process_move(self,
+	                 idx) -> None:
+		'''Move the current attacker to the specified position'''
+		self.combat_engine.process_move(heroes=self.heroes,
+		                                target_idx=idx)
+	
+	def check_for_dead(self) -> None:
+		'''Process dead heroes and enemies'''
+		dead_entities = []
 		for hero in self.heroes.party:
-			msgs.extend(process_entity_modifiers(hero))
-		for room in self.game_data.rooms.values():
-			for enemy in room.encounter.entities['enemy']:
-				msgs.extend(process_entity_modifiers(enemy))
-		for corridor in self.game_data.corridors.values():
-			for encounter in corridor.encounters:
-				for enemy in encounter.entities['enemy']:
-					msgs.extend(process_entity_modifiers(enemy))
-		return msgs
+			if hero.hp <= 0:
+				dead_entities.append(self.heroes.party.pop(self.heroes.party.index(hero)))
+		for enemy in self.movement_engine.current_encounter.enemies:
+			if enemy.hp <= 0:
+				dead_entities.append(self.movement_engine.current_encounter.enemies.pop(self.movement_engine.current_encounter.enemies.index(enemy)))
+		self.combat_engine.process_dead(dead_entities=dead_entities)
+		stress_system.process_dead(dead_entities)
+		msg_system.process_dead(dead_entities)
 	
-	def get_current_attacker_with_idx(self) -> Tuple[Union[Hero, Enemy], int]:
-		entity = self.combat_engine.currently_attacking()
-		return entity, self.combat_engine.get_entities(self.heroes, self.game_data).index(entity)
+	def process_disarm(self) -> None:
+		'''Process disarming a trap'''
+		self.actions_engine.resolve_trap_encounter(encounter=self.movement_engine.current_encounter,
+		                                           heroes=self.heroes)
+		self.state = GameState.IDLE
 	
-	def check_gameover(self) -> List[str]:
+	def process_looting(self,
+	                    choice: LootingChoice) -> None:
+		'''Process looting a treasure'''
+		if choice == LootingChoice.LOOT or choice == LootingChoice.INSPECT_AND_LOOT:
+			self.actions_engine.resolve_treasure_encounter(encounter=self.movement_engine.current_encounter,
+			                                               heroes=self.heroes,
+			                                               choice=choice)
+		else:
+			msg_system.ignore_looting()
+			stress_system.ignore_looting()
+		self.state = GameState.IDLE
+	
+	def targeted(self,
+	             idx: int) -> List[int]:
+		'''Get the indices of the positioned entities currently targeted'''
+		return self.combat_engine.targets_by_action[idx]
+	
+	def check_game_over(self) -> None:
+		'''Check if the game is over (based on the scenario objective)'''
 		# TODO: The game over check for heroes should depend on the scenario objective
-		# game over case #1: all hereoes are dead
 		if len(self.heroes.party) == 0:
-			self.state = GameState.ENEMIES_WON
-			return ['<i><b>GAME OVER</i></b>: Enemies won!']
-		# game over case #2: no more enemies in the level
-		else:
-			flag = False
-			for room in self.game_data.rooms.values():
-				flag |= len(room.encounter.entities.get('enemy', [])) > 0
-			for corridor in self.game_data.corridors.values():
-				for encounter in corridor.encounters:
-					flag |= len(encounter.entities.get('enemy', [])) > 0
-			if not flag:
-				self.state = GameState.HEROES_WON
-				return ['<i><b>GAME OVER</i></b>: Heroes won!']
-		return []
-	
-	def attempt_looting(self,
-	                    choice: int) -> List[str]:
-		if choice == 0 or choice == 1:
-			encounter = get_current_encounter(level=self.game_data,
-			                                  encounter_idx=self.movement_engine.encounter_idx)
-			msgs, stress_diff = self.actions_engine.resolve_treasure_encounter(encounter=encounter,
-			                                                                   heroes=self.heroes,
-			                                                                   do_inspect=choice == 1)
-			self.stress += stress_diff
-		else:
-			msgs = ['You ignore the treasure... For now.']
-			self.stress += configs.game.stress.ignore_treasure
-		self.state = GameState.IDLE
-		return msgs
-	
-	def attempt_disarm(self) -> List[str]:
-		encounter = get_current_encounter(level=self.game_data,
-		                                  encounter_idx=self.movement_engine.encounter_idx)
-		msgs, stress_diff = self.actions_engine.resolve_trap_encounter(encounter=encounter,
-		                                                               heroes=self.heroes)
-		self.stress += stress_diff
-		self.state = GameState.IDLE
-		return msgs
-	
-	def process_move(self, idx):
-		diff_stress, msgs = self.combat_engine.process_move(heroes=self.heroes,
-		                                                    game_data=self.game_data,
-		                                                    idx=idx)
-		self.stress += diff_stress
-		return msgs
+			self.state = GameState.GAME_OVER
+		n_enemies_left = 0
+		for room in self.scenario.rooms.values():
+			n_enemies_left += len(room.encounter.enemies)
+		for corridor in self.scenario.corridors.values():
+			for encounter in corridor.encounters:
+				n_enemies_left += len(encounter.enemies)
+		if n_enemies_left == 0:
+			self.state = GameState.GAME_OVER

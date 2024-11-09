@@ -10,28 +10,12 @@ from dungeon_despair.domain.entities.trap import Trap
 from dungeon_despair.domain.entities.treasure import Treasure
 from dungeon_despair.domain.level import Level
 from dungeon_despair.domain.room import Room
-from dungeon_despair.domain.utils import get_enum_by_value, AttackType
+from dungeon_despair.domain.utils import get_enum_by_value, ActionType
 from heroes_party import Hero, HeroParty
 
 
 def img_to_pygame_sprite(img: Image) -> Surface:
 	return pygame.image.frombuffer(img.tobytes(), img.size, img.mode)
-
-
-def get_current_room(level: Level):
-	if level.current_room in level.rooms.keys():
-		return level.rooms[level.current_room]
-	else:
-		return level.corridors[level.current_room]
-
-
-def get_current_encounter(level: Level,
-                          encounter_idx: int = -1):
-	curr_room = get_current_room(level)
-	if isinstance(curr_room, Room):
-		return curr_room.encounter
-	else:
-		return curr_room.encounters[encounter_idx]
 
 
 def basic_room_description(room: Room) -> str:
@@ -57,14 +41,14 @@ def rich_entity_description(entity: Entity) -> str:
 
 
 def rich_attack_description(attack: Attack) -> str:
-	attack_type = get_enum_by_value(AttackType, attack.type)
-	if attack_type == AttackType.MOVE:
+	attack_type = get_enum_by_value(ActionType, attack.type)
+	if attack_type == ActionType.MOVE:
 		s = f'<b>Move</b>: <i>Move to another position within the group.</i>'
-	elif attack_type == AttackType.PASS:
+	elif attack_type == ActionType.PASS:
 		s = f'<b>Pass</b>: <i>Skip the current turn.</i>'
-	elif attack_type == AttackType.DAMAGE:
+	elif attack_type == ActionType.DAMAGE:
 		s = f'<b>{attack.name}</b>:  <i>{attack.description}</i> (DMG: {attack.base_dmg}HP {attack.accuracy:.0%} FROM: {attack.starting_positions} TO: {attack.target_positions})'
-	elif attack_type == AttackType.HEAL:
+	elif attack_type == ActionType.HEAL:
 		s = f'<b>{attack.name}</b>:  <i>{attack.description}</i> (HEAL: {-attack.base_dmg}HP FROM: {attack.starting_positions} TO: {attack.target_positions})'
 	else:
 		raise NotImplementedError(f'Unknown attack type: {attack.type}')

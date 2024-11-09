@@ -8,13 +8,18 @@ from dungeon_despair.domain.attack import Attack
 from dungeon_despair.domain.encounter import Encounter
 from dungeon_despair.domain.entities.enemy import Enemy
 from dungeon_despair.domain.level import Level
-from dungeon_despair.domain.utils import AttackType, get_enum_by_value, ModifierType
+from dungeon_despair.domain.utils import ActionType, get_enum_by_value, ModifierType
+from engine.modifier_system import ModifierSystem
 from heroes_party import Hero, HeroParty
 
+from engine.message_system import msg_system
+from engine.stress_system import stress_system
 
 class CombatPhase(Enum):
 	PICK_ATTACK = auto()
 	CHOOSE_POSITION = auto()
+	END_OF_TURN = auto()
+	END_OF_COMBAT = auto()
 
 
 class CombatEngine:
@@ -24,16 +29,19 @@ class CombatEngine:
 		self.sorted_entities = []
 		self.current_encounter: Optional[Encounter] = None
 		
+		self.actions: List[Attack] = []
+		self.targets_by_action: List[List[int]] = []
+		
 		self.extra_actions = [
 			Attack(name='Pass',
 			       description='Pass the current turn.',
-			       type=AttackType.PASS,
+			       type=ActionType.PASS,
 			       starting_positions='XXXX',
 			       target_positions='OOOO',
 			       base_dmg=0, accuracy=0.0),
 			Attack(name='Move',
 			       description='Move to another hero\'s position.',
-			       type=AttackType.MOVE,
+			       type=ActionType.MOVE,
 			       starting_positions='XXXX',
 			       target_positions='OOOO',
 			       base_dmg=0, accuracy=0.0)
@@ -41,245 +49,183 @@ class CombatEngine:
 		
 		self.state = CombatPhase.PICK_ATTACK
 	
-	def start_encounter(self, encounter, heroes: HeroParty, game_data: Level) -> Tuple[List[str], int]:
-		msgs = ['<b><i>### NEW ENCOUNTER</i></b>', '<i>Turn 1:</i>']
+	def start_encounter(self, encounter: Encounter, heroes: HeroParty) -> None:
+		'''Start the encounter'''
+		msg_system.add_msg('<b><i>### NEW ENCOUNTER</i></b>')
 		self.turn_number = 0
 		self.current_encounter = encounter
-		stress_diff = self.start_turn(heroes, game_data)
-		msgs.append(f'Attacking: <b>{self.currently_attacking().name}</b>')
-		return msgs, stress_diff
 	
-	def is_encounter_over(self, heroes: HeroParty, game_data: Level):
-		return len(heroes.party) == 0 or len(self.current_encounter.entities.get('enemy', [])) == 0
+	def start_turn(self, heroes: HeroParty, enemies: List[Enemy]):
+		'''Start a new turn in combat'''
+		self.turn_number += 1
+		self.currently_active = -1
+		msg_system.add_msg(f'<b>Turn {self.turn_number}</b>')
+		# Everyone takes a move during the turn, then the turn advances and everyone rerolls turn order and goes again.
+		self.sorted_entities = self.sort_entities([*heroes.party, *enemies])
+		self.state = CombatPhase.PICK_ATTACK
+		stress_system.process_new_turn()
+	
+	def get_next_attacker(self):
+		for i in range(self.currently_active + 1, len(self.sorted_entities)):
+			entity = self.sorted_entities[i]
+			is_stunned = False
+			for modifier in entity.modifiers:
+				if get_enum_by_value(ModifierType, modifier.type) == ModifierType.STUN:
+					is_stunned = True
+					break
+			if not is_stunned:
+				self.currently_active = i
+				msg_system.add_msg(f'Attacking: <b>{self.sorted_entities[self.currently_active].name}</b>')
+				break
 	
 	def sort_entities(self, entities: List[Union[Hero, Enemy]]) -> List[Union[Hero, Enemy]]:
+		'''Sort the entities for combat order'''
 		# Turn order is determined semi-randomly: 1d10+Speed.
 		modified_speed = [(entity.spd * 10) + random.randint(1, 10) for entity in entities]
 		sorted_entities = [i for i, _ in sorted(enumerate(modified_speed), key=lambda x: x[1])]
 		# return sorted_entities
 		sorted_entities = [entities[i] for i in sorted_entities]
-		# remove entities that are stunned
-		stunned = []
-		for i, entity in enumerate(sorted_entities):
-			for modifier in entity.modifiers:
-				if get_enum_by_value(ModifierType, modifier.type) == ModifierType.STUN:
-					stunned.append(i)
-		for i in reversed(stunned):
-			sorted_entities.pop(i)
 		return sorted_entities
 	
-	def get_entities(self, heroes: HeroParty, game_data: Level) -> List[Union[Hero, Enemy]]:
-		return [*heroes.party, *self.current_encounter.entities.get('enemy', [])]
+	@property
+	def attacker(self) -> Union[Hero, Enemy]:
+		return self.sorted_entities[self.currently_active]
 	
-	def start_turn(self, heroes: HeroParty, game_data: Level) -> int:
-		self.tick_modifiers(heroes, game_data)
-		self.turn_number += 1
-		self.currently_active = 0
-		# Everyone takes a move during the turn, then the turn advances and everyone rerolls turn order and goes again.
-		self.sorted_entities = self.sort_entities(self.get_entities(heroes, game_data))
-		return configs.game.stress.turn
+	def tick(self,
+	         heroes: HeroParty):
+		'''Update the state of combat'''
+		# Try update the current attacker
+		curr_n = self.currently_active
+		self.get_next_attacker()
+		if curr_n == self.currently_active:  # No available next attacker
+			self.state = CombatPhase.END_OF_TURN
+		else:
+			self.set_actions_and_targets(heroes=heroes)
+		# Check for end of combat in this encounter
+		if len(heroes.party) == 0 or len(self.current_encounter.enemies) == 0:
+			self.state = CombatPhase.END_OF_COMBAT
+			self.actions = []
 	
-	def tick_modifiers(self, heroes: HeroParty, game_data: Level) -> None:
-		# Tick down every modifier applied to heroes and enemies
-		for hero in heroes.party:
-			for modifier in hero.modifiers:
-				modifier.turns -= 1
-			hero.modifiers = [x for x in hero.modifiers if x.turns != 0]
-		for room in game_data.rooms.values():
-			for enemy in room.encounter.entities['enemy']:
-				for modifier in enemy.modifiers:
-					modifier.turns -= 1
-				enemy.modifiers = [x for x in enemy.modifiers if x.turns != 0]
-		for corridor in game_data.corridors.values():
-			for encounter in corridor.encounters:
-				for enemy in encounter.entities['enemy']:
-					for modifier in enemy.modifiers:
-						modifier.turns -= 1
-					enemy.modifiers = [x for x in enemy.modifiers if x.turns != 0]
-	
-	def convert_attack_mask(self, mask: str):
+	def convert_mask(self,
+	                 mask: str) -> List[int]:
+		'''Convert the mask from string to list of ints'''
 		return [1 if x == 'X' else 0 for x in mask]
 	
-	def currently_attacking(self) -> Union[Hero, Enemy]:
-		current_attacker = self.sorted_entities[self.currently_active]
-		return current_attacker
-	
-	def get_attacks(self, heroes: HeroParty, game_data: Level) -> List[Attack]:
-		positioned_entities = self.get_entities(heroes, game_data)
-		current_attacker = self.sorted_entities[self.currently_active]
-		
-		possible_attacks = current_attacker.attacks.copy()
-		possible_attacks.extend(self.extra_actions)
-		attacker_idx = positioned_entities.index(current_attacker)
-		attacker_idx -= 0 if attacker_idx <= len(heroes.party) - 1 else len(heroes.party)
+	def set_actions_and_targets(self,
+	                            heroes: HeroParty) -> None:
+		self.targets_by_action = []
+		self.actions = self.attacker.attacks.copy()
+		self.actions.extend(self.extra_actions)
+		positioned_entities = [*heroes.party, *self.current_encounter.enemies]  # TODO: Set in self?
+		attacker_idx = positioned_entities.index(self.attacker)
 		
 		# disable attacks that cannot be executed
-		for attack in possible_attacks:
-			attack_type = get_enum_by_value(AttackType, attack.type)
-			if attack_type == AttackType.MOVE:
+		for action in self.actions:
+			action_type = get_enum_by_value(ActionType, action.type)
+			if action_type == ActionType.MOVE:
 				# Move should be disabled if there are no other entities to change place with
-				if isinstance(current_attacker, Hero):
-					attack.active = len(heroes.party) > 1
+				if isinstance(self.attacker, Hero):
+					action.active = len(heroes.party) > 1
 				else:
-					attack.active = len(self.current_encounter.entities['enemy']) > 1
-			elif attack_type != AttackType.PASS:
-				# Disable attacks that cannot be executed from the current attacker position
-				attack_mask = self.convert_attack_mask(attack.starting_positions)
-				if isinstance(current_attacker, Hero):
-					attack_mask = list(reversed(attack_mask))
-				attack.active = attack_mask[attacker_idx] == 1
-				# Disable attacks that do not have a target in a valid position
-				target_mask = self.convert_attack_mask(attack.target_positions)
-				if attack_type == AttackType.DAMAGE:
-					if isinstance(current_attacker, Enemy):
-						target_mask = list(reversed(target_mask))
-					targets_n = len(positioned_entities) - len(heroes.party) if positioned_entities.index(
-						current_attacker) <= len(heroes.party) - 1 else len(heroes.party)
-					targets = [1 if i < targets_n else 0 for i in range(len(target_mask))]
-					if isinstance(current_attacker, Enemy):
-						targets = list(reversed(targets))
-				elif attack_type == AttackType.HEAL:
-					targets_n = len(heroes.party) if positioned_entities.index(current_attacker) <= len(heroes.party) - 1 else len(positioned_entities) - len(heroes.party)
-					targets = [1 if i < targets_n else 0 for i in range(len(target_mask))]
-					if isinstance(current_attacker, Hero):
-						targets = list(reversed(targets))
-				else:
-					raise NotImplementedError(f'Unknown attack type: {attack.type.value}')
-				target_and = [1 if i == 1 and j == 1 else 0 for i, j in zip(target_mask, targets)]
-				attack.active &= sum(target_and) > 0
-		
-		return possible_attacks
-	
-	def process_attack(self, heroes: HeroParty, game_data: Level, attack_idx: int) -> Tuple[int, List[str]]:
-		stress = 0
-		action_msgs = []
-		
-		positioned_entities = self.get_entities(heroes, game_data)
-		current_attacker = self.sorted_entities[self.currently_active]
-		attack = current_attacker.attacks[attack_idx] if attack_idx < len(
-			current_attacker.attacks) else self.extra_actions[attack_idx - len(current_attacker.attacks)]
-		
-		attack_type = get_enum_by_value(AttackType, attack.type)
-		
-		if attack_type == AttackType.MOVE:
-			self.state = CombatPhase.CHOOSE_POSITION
-		else:
-			if attack_type == AttackType.PASS:
-				action_msgs.append(f'<b>{current_attacker.name}</b> passes!')
-				stress += configs.game.stress.passing * (1 if isinstance(current_attacker, Hero) else -1)
-			elif attack_type == AttackType.DAMAGE:
-				base_dmg = attack.base_dmg
-				attack_mask = self.convert_attack_mask(attack.target_positions)
-				if isinstance(current_attacker, Enemy):
-					attack_mask = list(reversed(attack_mask))
-				attack_offset = 0 if isinstance(current_attacker, Enemy) else len(heroes.party)
-				
-				for i in range(min(len(attack_mask), len(positioned_entities) - attack_offset)):
-					if attack_mask[i]:
-						target_entity = positioned_entities[attack_offset + i]
-						do_hit = 1 if random.random() < max(0.0, (attack.accuracy * 2) - target_entity.dodge) else 0
-						hyp_dmg = int(base_dmg * (1 - target_entity.prot))
-						if do_hit:
-							dmg_taken = hyp_dmg
-							target_entity.hp -= dmg_taken
-							action_msgs.append(
-								f'<b>{current_attacker.name}</b>: {attack.description} <i>{dmg_taken}</i> damage dealt to <b>{target_entity.name}</b>!')
-							if attack.modifier:
-								if random.random() <= attack.modifier.chance:
-									target_entity.modifiers.append(copy.deepcopy(attack.modifier))
-									action_msgs.append(f'<b>{target_entity.name}</b> receives a {attack.modifier.type} modifier!')
-							stress += int(dmg_taken * (-1 if isinstance(current_attacker, Hero) else 1))
+					action.active = len(self.current_encounter.enemies) > 1
+				self.targets_by_action.append([])
+			elif action_type != ActionType.PASS:
+				# Disable actions that cannot be executed from the current position
+				from_mask = self.convert_mask(action.starting_positions)
+				if isinstance(self.attacker, Hero):  # FROM is reversed for heroes
+					from_mask = list(reversed(from_mask))
+				idx = attacker_idx if isinstance(self.attacker, Hero) else attacker_idx - len(heroes.party)
+				action.active = from_mask[idx] == 1
+				if action.active:
+					# Disable actions that don't have a target entity
+					to_mask = self.convert_mask(action.target_positions)
+					if action_type == ActionType.DAMAGE:
+						if isinstance(self.attacker, Enemy):  # TO is reversed for enemies
+							to_mask = list(reversed(to_mask))
+							targets = heroes.party
+							offset = 0
 						else:
-							action_msgs.append(
-								f'<b>{current_attacker.name}</b>: {attack.description} but misses!')
-							stress += int(hyp_dmg / 2 * (-1 if isinstance(current_attacker, Enemy) else 1))
-			elif attack_type == AttackType.HEAL:
-				heal = -attack.base_dmg
-				heal_mask = self.convert_attack_mask(attack.target_positions)
-				if isinstance(current_attacker, Hero):
-					heal_mask = list(reversed(heal_mask))
-				heal_offset = 0 if isinstance(current_attacker, Hero) else len(positioned_entities) - len(heroes.party)
-				
-				for i in range(min(len(heal_mask), len(positioned_entities) - heal_offset)):
-					if heal_mask[i]:
-						target_entity = positioned_entities[heal_offset + i]
-						hp_before = target_entity.hp
-						target_entity.hp += heal
-						target_entity.hp = min(target_entity.max_hp, target_entity.hp)
-						hp_diff = target_entity.hp - hp_before
-						action_msgs.append(f'<b>{current_attacker.name}</b>: {attack.description} heals <b>{target_entity.name}</b> by <i>{hp_diff}</i>!')
-						if attack.modifier:
-							if random.random() <= attack.modifier.chance:
-								target_entity.modifiers.append(copy.deepcopy(attack.modifier))
-								action_msgs.append(f'<b>{target_entity.name}</b> receives a {attack.modifier.type} modifier!')
-						stress -= int(heal * (1 if isinstance(current_attacker, Hero) else -1))
+							targets = self.current_encounter.enemies
+							offset = len(heroes.party)
+					else:
+						if isinstance(self.attacker, Hero):  # HEAL is applied to the same group
+							to_mask = list(reversed(to_mask))
+							targets = heroes.party
+							offset = 0
+						else:
+							targets = self.current_encounter.enemies
+							offset = len(heroes.party)
+					# targeted are entities that exist and are in the mask
+					targeted = [to_mask[i] if i < len(targets) else 0 for i in range(len(targets))]
+					# save the indices of targeted entities for each attack
+					self.targets_by_action.append([offset + i for i, v in enumerate(targeted) if v == 1])
+					action.active = sum(targeted) > 0
+				else:
+					self.targets_by_action.append([])
 			else:
-				raise NotImplementedError(f'Unknown attack type: {attack_type.value}.')
-			
-			self.currently_active += 1
+				self.targets_by_action.append([])
+	
+	def process_attack(self,
+	                   heroes: HeroParty,
+	                   idx: int) -> None:
+		action = self.actions[idx]
+		action_type = get_enum_by_value(ActionType, action.type)
+		positioned_entities = [*heroes.party, *self.current_encounter.enemies]
 		
-		return stress, action_msgs
+		if action_type == ActionType.MOVE:
+			self.state = CombatPhase.CHOOSE_POSITION
+		elif action_type == ActionType.PASS:
+			msg_system.add_msg(f'<b>{self.attacker.name}</b> passes!')
+			stress_system.process_pass(attacker=self.attacker)
+		elif action_type == ActionType.DAMAGE:
+			for target_idx in self.targets_by_action[idx]:
+				target = positioned_entities[target_idx]
+				do_hit = 1 if random.random() < max(0.0, action.accuracy - target.dodge) else 0
+				hyp_dmg = int(action.base_dmg * (1 - target.prot))
+				if do_hit:
+					dmg_taken = hyp_dmg
+					target.hp -= dmg_taken
+					msg_system.add_msg(f'<b>{self.attacker.name}</b>: {action.name} <i>{dmg_taken}</i> damage dealt to <b>{target.name}</b>!')
+					stress_system.process_damage(dmg=dmg_taken, attacker=self.attacker)
+					if action.modifier is not None:
+						ModifierSystem.try_add_modifier(target, action.modifier)
+				else:
+					msg_system.add_msg(f'<b>{self.attacker.name}</b>: {action.name} at {target.name} but misses!')
+					stress_system.process_miss(hyp_dmg=hyp_dmg, attacker=self.attacker)
+		elif action_type == ActionType.HEAL:
+			for target_idx in self.targets_by_action[idx]:
+				target = positioned_entities[target_idx]
+				heal = min(target.max_hp - target.hp, -action.base_dmg)
+				target.hp += heal
+				msg_system.add_msg(f'<b>{self.attacker.name}</b>: {action.name} heals <b>{target.name}</b> by <i>{heal}</i>!')
+				stress_system.process_heal(heal=heal, entity=target)
+				if action.modifier is not None:
+					ModifierSystem.try_add_modifier(target, action.modifier)
+	
+	def process_move(self,
+	                 heroes: HeroParty,
+	                 target_idx: int) -> None:
+		positioned_entities = [*heroes.party, *self.current_encounter.enemies]
+		target = positioned_entities[target_idx]
+		
+		if target.name != self.attacker.name:
+			if self.attacker.__class__ == target.__class__:
+				msg_system.add_msg(f"<b>{self.attacker.name}</b> moves in <b>{target.name}</b> position!")
+				l = heroes.party if isinstance(self.attacker, Hero) else self.current_encounter.enemies
+				l.insert(l.index(target), l.pop(l.index(self.attacker)))
+				stress_system.process_move(self.attacker)
+				self.state = CombatPhase.PICK_ATTACK
+			else:
+				msg_system.add_msg(f"<b>{self.attacker.name}</b> can only move within its party!")
 	
 	def try_cancel_move(self,
-	                    attacker: Union[Hero, Enemy],
-	                    idx: int) -> None:
-		attack = attacker.attacks[idx] if idx < len(
-			attacker.attacks) else self.extra_actions[idx - len(attacker.attacks)]
-		attack_type = get_enum_by_value(AttackType, attack.type)
-		if attack_type == AttackType.MOVE:
+	                    action_idx: int) -> None:
+		action = self.actions[action_idx]
+		action_type = get_enum_by_value(ActionType, action.type)
+		if action_type == ActionType.MOVE:
 			self.state = CombatPhase.PICK_ATTACK
 	
-	def process_move(self, heroes: HeroParty, game_data: Level, idx: int) -> Tuple[int, List[str]]:
-		positioned_entities = self.get_entities(heroes, game_data)
-		current_attacker = self.sorted_entities[self.currently_active]
-		
-		stress_diff = 0
-		curr_idx = positioned_entities.index(current_attacker)
-		
-		if isinstance(current_attacker, Hero):
-			if idx < len(heroes.party) and idx != curr_idx:
-				move_msg = f"<b>{current_attacker.name}</b> moves in <b>{heroes.party[idx].name}</b> position!"
-				heroes.party.insert(idx, heroes.party.pop(curr_idx))
-				stress_diff += configs.game.stress.switch_position
-				self.state = CombatPhase.PICK_ATTACK
-				self.currently_active += 1
-			else:
-				move_msg = f"<b>{current_attacker.name}</b> can only move within its party!"
-		else:
-			curr_idx -= len(heroes.party)
-			if idx >= len(heroes.party):
-				idx -= len(heroes.party)
-				move_msg = f"<b>{current_attacker.name}</b> moves in <b>{self.current_encounter.entities['enemy'][idx].name}</b> position!"
-				self.current_encounter.entities['enemy'].insert(idx, self.current_encounter.entities['enemy'].pop(curr_idx))
-				stress_diff -= configs.game.stress.switch_position
-				self.state = CombatPhase.PICK_ATTACK
-				self.currently_active += 1
-			else:
-				move_msg = f"<b>{current_attacker.name}</b> can only move within its group!"
-		
-		return stress_diff, [move_msg]
-	
-	def process_dead_entities(self, heroes: HeroParty, game_data: Level) -> Tuple[int, List[str]]:
-		stress = 0
-		dead_entities = []
-		messages = []
-		
-		positioned_entities = self.get_entities(heroes, game_data)
-		for i, entity in enumerate(positioned_entities):
-			if entity.hp <= 0:
-				dead_entities.append(i)
-				if isinstance(entity, Hero):
-					stress += configs.game.stress.enemy_kill_hero
-				else:
-					stress += configs.game.stress.hero_kill_enemy - self.turn_number
-				messages.append(f'<b>{entity.name}</b> is dead!')
-				self.sorted_entities.remove(entity)
-		
-		for i in reversed(dead_entities):
-			if i > len(heroes.party) - 1:
-				j = i - len(heroes.party)
-				self.current_encounter.entities.get('enemy', []).pop(j)
-			else:
-				heroes.party.pop(i)
-		
-		return stress, messages
+	def process_dead(self,
+	                 dead_entities: List[Union[Hero, Enemy]]):
+		for entity in dead_entities:
+			self.sorted_entities.remove(entity)
