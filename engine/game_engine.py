@@ -97,6 +97,7 @@ class GameEngine:
 				self.check_for_dead()
 				self.combat_engine.start_turn(heroes=self.heroes,
 				                              enemies=self.movement_engine.current_encounter.enemies)
+				self.combat_engine.tick(self.heroes)
 			elif self.combat_engine.state == CombatPhase.END_OF_COMBAT:
 				self.state = GameState.IDLE
 				if self.state == GameState.IDLE:
@@ -169,7 +170,8 @@ class GameEngine:
 		for enemy in self.movement_engine.current_encounter.enemies:
 			if enemy.hp <= 0:
 				dead_entities.append(self.movement_engine.current_encounter.enemies.pop(self.movement_engine.current_encounter.enemies.index(enemy)))
-		self.combat_engine.process_dead(dead_entities=dead_entities)
+		if self.state == GameState.IN_COMBAT:
+			self.combat_engine.process_dead(dead_entities=dead_entities)
 		stress_system.process_dead(dead_entities)
 		msg_system.process_dead(dead_entities)
 	
@@ -203,6 +205,7 @@ class GameEngine:
 		# TODO: The game over check for heroes should depend on the scenario objective
 		if len(self.heroes.party) == 0:
 			self.state = GameState.GAME_OVER
+			msg_system.add_msg('Game over: all heroes are dead!')
 		n_enemies_left = 0
 		for room in self.scenario.rooms.values():
 			n_enemies_left += len(room.encounter.enemies)
@@ -211,3 +214,4 @@ class GameEngine:
 				n_enemies_left += len(encounter.enemies)
 		if n_enemies_left == 0:
 			self.state = GameState.GAME_OVER
+			msg_system.add_msg('Game over: all enemies are dead!')
