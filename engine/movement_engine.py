@@ -15,7 +15,9 @@ class Destination:
 	
 	def __eq__(self, other):
 		return self.to == other.to and self.idx == other.idx
-
+	
+	def __str__(self):
+		return f'{self.to}__{self.idx}'
 
 class MovementEngine:
 	def __init__(self):
@@ -67,13 +69,12 @@ class MovementEngine:
 	
 	def move_to(self,
 	            level: Level,
-	            dest_name: str,
-	            encounter_idx: int = -1):
+	            dest: Destination):
 		'''Move to a new area in the level'''
-		if self.current_room is None or (dest_name != self.current_room.name or encounter_idx != self.encounter_idx):
+		if self.current_room is None or (dest.to != self.current_room.name or dest.idx != self.encounter_idx):
 			prev_area = self.current_room
-			level.current_room = dest_name
-			self.encounter_idx = encounter_idx
+			level.current_room = dest.to
+			self.encounter_idx = dest.idx
 			self.current_room = self.get_area(level)
 			self.destinations = self.compute_destinations(level)
 			if prev_area is None or self.current_room.name != prev_area.name:
@@ -85,13 +86,12 @@ class MovementEngine:
 			
 	def reachable(self,
 	              level: Level,
-	              dest_name: str,
-	              idx: int) -> bool:
+	              dest: Destination) -> bool:
 		'''Check if a destination is reachable from the current encounter'''
-		if Destination(dest_name, idx) in self.destinations:
+		if dest in self.destinations:
 			return True
 		else:
-			msg_system.add_msg(f'You can\'t reach <b>{dest_name}</b> from <b>{level.current_room}</b>!')
+			msg_system.add_msg(f'You can\'t reach <b>{dest.to}</b> from <b>{level.current_room}</b>!')
 			return False
 	
 	

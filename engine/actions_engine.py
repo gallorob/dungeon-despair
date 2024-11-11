@@ -2,6 +2,8 @@ import random
 from enum import auto, Enum
 
 from dungeon_despair.domain.encounter import Encounter
+from dungeon_despair.domain.entities.hero import Hero
+from dungeon_despair.domain.entities.treasure import Treasure
 from engine.message_system import msg_system
 from engine.modifier_system import ModifierSystem
 from engine.stress_system import stress_system
@@ -37,11 +39,10 @@ class ActionEngine:
 		encounter.entities['trap'].pop(0)
 	
 	def resolve_treasure_encounter(self,
+	                               treasure: Treasure,
+	                               hero: Hero,
 	                               encounter: Encounter,
-	                               heroes: HeroParty,
 	                               choice: LootingChoice) -> None:
-		treasure = encounter.treasures[0]
-		hero = random.choice(heroes.party)
 		# in darkest dungeon:
 		# curios have a ~75% chance of containing loot and ~25% chance of being empty
 		# plus other effects, so... we do what we want here

@@ -3,6 +3,7 @@ from typing import Union, List
 from configs import configs
 from dungeon_despair.domain.entities.enemy import Enemy
 from dungeon_despair.domain.entities.hero import Hero
+from dungeon_despair.domain.entities.treasure import Treasure
 
 
 class StressSystem:
@@ -94,6 +95,13 @@ class StressSystem:
 	                          inspected: bool):
 		stress_diff = configs.game.stress.loot_treasure
 		stress_diff += configs.game.stress.no_inspect_treasure if not inspected else 0
+		self.stress += int(stress_diff)
+	
+	def process_ignore_looting(self,
+	                           treasure: Treasure,
+	                           hero: Hero):
+		stress_diff = configs.game.stress.ignore_treasure
+		stress_diff *= (1 - hero.stress_resist)
 		self.stress += int(stress_diff)
 	
 	def process_trap(self,

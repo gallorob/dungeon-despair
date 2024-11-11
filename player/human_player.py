@@ -10,22 +10,22 @@ class HumanPlayer(Player):
 	def __init__(self):
 		super().__init__(PlayerType.HUMAN)
 	
-	def pick_attack(self,
-	                attacks) -> int:
+	def pick_actions(self,
+	                 **kwargs) -> int:
 		pass
 	
 	def pick_moving(self,
-	                attacker: Entity,
-	                heroes: List[Hero],
-	                enemies: List[Enemy]) -> int:
+	                **kwargs) -> int:
 		pass
 	
 	def pick_destination(self,
-	                     destinations):
+	                     **kwargs):
 		pass
 	
-	def choose_disarm_trap(self) -> bool:
+	def choose_disarm_trap(self,
+	                       **kwargs) -> bool:
 		pass
 	
-	def choose_loot_treasure(self) -> bool:
+	def choose_loot_treasure(self,
+	                         **kwargs) -> bool:
 		pass

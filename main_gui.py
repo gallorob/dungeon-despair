@@ -11,6 +11,7 @@ from pygame_gui.elements import UIWindow
 
 from configs import configs
 from context_manager import ContextManager
+from dungeon_despair.domain.attack import Attack
 from dungeon_despair.domain.configs import config as ddd_config
 from dungeon_despair.domain.entities.enemy import Enemy
 from dungeon_despair.domain.level import Level
@@ -19,11 +20,13 @@ from engine.actions_engine import LootingChoice
 from engine.combat_engine import CombatPhase
 from engine.game_engine import GameEngine, GameState
 from engine.message_system import msg_system
+from engine.movement_engine import Destination
 from engine.stress_system import stress_system
 from heroes_party import Hero, get_temp_heroes
 from player.ai_player import AIPlayer
 from player.base_player import PlayerType, Player
 from player.human_player import HumanPlayer
+from player.random_player import RandomPlayer
 from ui_components.action_menu import ActionWindow, trap_choices, treasure_choices
 from ui_components.encounter_preview import EncounterPreview
 from ui_components.events_history import EventsHistory
@@ -44,6 +47,12 @@ pygame.init()
 screen = pygame.display.set_mode((configs.ui.screen_width, configs.ui.screen_height))
 pygame.display.set_caption("Dungeon Despair")
 pygame.display.set_icon(pygame.image.load(configs.assets.logo))
+
+background_image = pygame.image.load(configs.assets.screens.background)
+screen.blit(background_image,
+            dest=pygame.Rect(0, 0, configs.ui.screen_width, configs.ui.screen_height))  # TODO: Scale the background correctly and blur it a bit
+
+# TODO: Add all the other main menu things (logo, title, load scenario button, quit button)
 
 # Create the UI manager
 ui_manager = pygame_gui.UIManager((screen.get_width(), screen.get_height()))
@@ -89,7 +98,7 @@ game_over_window = GameOver(rect=pygame.Rect(configs.ui.screen_width / 4, config
 game_over_window.hide()
 
 # Set players
-heroes_player = HumanPlayer()
+heroes_player = AIPlayer()
 enemies_player = HumanPlayer()
 
 # Create game engine
@@ -137,6 +146,7 @@ class AppState(Enum):
 	IN_MAIN_MENU = auto()
 	IN_LOADING_SCENARIO = auto()
 	IN_GAME = auto()
+appstate = AppState.IN_LOADING_SCENARIO
 
 def event_in_ui_element(event: EventType,
                         element: UIWindow) -> bool:
@@ -192,8 +202,7 @@ while running:
 			if event.ui_element == exit_dlg:
 				running = False
 		
-		elif event.type == pygame_gui.UI_WINDOW_CLOSE:
-			if event.ui_element == exit_dlg:
+		elif event.type == pygame_gui.UI_WINDOW_CLOSE and event.ui_element == exit_dlg:
 				exit_dlg = None
 		
 		elif game_engine.state == GameState.LOADING:
@@ -202,7 +211,7 @@ while running:
 				# no level was picked, so close the application
 				running = False
 			# Selecting a level
-			elif event.type == pygame_gui.UI_FILE_DIALOG_PATH_PICKED:
+			if event.type == pygame_gui.UI_FILE_DIALOG_PATH_PICKED:
 				selected_file_path = event.text
 				level = Level.load_as_scenario(selected_file_path)
 				heroes = get_temp_heroes()
@@ -210,6 +219,7 @@ while running:
 				                      heroes=heroes)
 				game_engine.heroes = heroes
 				game_engine.set_level(level)
+				appstate = AppState.IN_GAME
 				# Initialize in-game screens
 				level_preview.show()
 				level_preview.create_minimap(game_data=game_engine.scenario)
@@ -220,17 +230,15 @@ while running:
 				update_ui_elements()
 		
 		elif game_engine.state == GameState.IDLE:
-			dest_name, idx = None, -1  # TODO: Could use Destination object instead
+			dest: Optional[Destination] = None
 			if heroes_player.type == PlayerType.HUMAN:
 				if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
 					if event_in_ui_element(event, level_preview):
-						dest_name, idx = level_preview.check_clicked_encounter(event.pos)
+						dest = level_preview.check_clicked_encounter(event.pos)
 			else:
-				# TODO: Could use Destination object instead
-				dest_name, idx = heroes_player.pick_destination(destinations=game_engine.movement_engine.destinations)
-			if dest_name is not None:
-				game_engine.move_to(area=dest_name,
-				                    encounter_idx=idx)
+				dest = heroes_player.pick_destination(destinations=game_engine.movement_engine.destinations)
+			if dest is not None:
+				game_engine.move_to(dest=dest)
 				game_engine.tick()
 				# Update UI elements
 				update_ui_elements()
@@ -243,7 +251,7 @@ while running:
 					if event_in_ui_element(event, action_window):
 						idx = action_window.check_colliding_action(pos=event.pos)
 			else:
-				idx = game_engine.player.choose_disarm_trap()  # TODO: Should always return 0
+				idx = game_engine.player.choose_disarm_trap()
 			if idx is not None:
 				game_engine.process_disarm()
 				game_engine.tick()
@@ -258,7 +266,7 @@ while running:
 						if idx is not None:
 							choice = treasure_choices[idx].looting_choice
 			else:
-				choice = game_engine.player.choose_loot_treasure()  # TODO: Change to return a LootingChoice
+				choice = game_engine.player.choose_loot_treasure(**{'game_engine_copy': copy.deepcopy(game_engine)})
 			if choice is not None:
 				game_engine.process_looting(choice=choice)
 				game_engine.tick()
@@ -267,57 +275,62 @@ while running:
 		elif game_engine.state == GameState.IN_COMBAT:
 			# if game_engine.player.type == PlayerType.HUMAN:
 			if game_engine.combat_engine.state == CombatPhase.PICK_ATTACK:
-				if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-					if game_engine.player.type == PlayerType.HUMAN:
+				if game_engine.player.type == PlayerType.HUMAN:
+					action_idx: Optional[int] = None
+					if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
 						if event_in_ui_element(event, action_window):
-							action = action_window.check_colliding_action(pos=event.pos)
-						else: action = None
-					else:
-						action = game_engine.player.pick_attack(game_engine.actions)
-					if action is not None:
-						game_engine.process_attack(attack_idx=action)
-						game_engine.tick()
-						update_ui_elements()
-						# TODO: This currently removes the targeted icons, but we could instead show the new attack's
-						#  targeted if we're hovering over, without waiting for the next mouse movement
-						encounter_preview.update_targeted([])
-				elif event.type == pygame.MOUSEMOTION:
-					if event_in_ui_element(event, action_window):
-						action = action_window.check_colliding_action(pos=event.pos)
-						if action is not None:
-							encounter_preview.update_targeted(idxs=game_engine.targeted(idx=action))
+							action_idx = action_window.check_colliding_action(pos=event.pos)
+					elif event.type == pygame.MOUSEMOTION:
+						if event_in_ui_element(event, action_window):
+							hovered_action = action_window.check_colliding_action(pos=event.pos)
+							if hovered_action is not None:
+								encounter_preview.update_targeted(idxs=game_engine.targeted(idx=hovered_action))
+				else:  # Other player types
+					action_idx = game_engine.player.pick_actions(**{'actions': game_engine.actions,
+					                                                'game_engine_copy': copy.deepcopy(game_engine)})
+				if action_idx is not None:
+					game_engine.process_attack(attack_idx=action_idx)
+					game_engine.tick()
+					update_ui_elements()
+					# TODO: This currently removes the targeted icons, but we could instead show the new attack's
+					#  targeted if we're hovering over, without waiting for the next mouse movement
+					encounter_preview.update_targeted([])
+				
 			elif game_engine.combat_engine.state == CombatPhase.CHOOSE_POSITION:
-				if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-					if game_engine.player.type == PlayerType.HUMAN:
+				sprite_idx: Optional[int] = None
+				if game_engine.player.type == PlayerType.HUMAN:
+					if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
 						if event_in_ui_element(event, encounter_preview):
 							sprite_idx = encounter_preview.check_colliding_entity(pos=event.pos)
 						elif event_in_ui_element(event, action_window):
 							action_idx = action_window.check_colliding_action(pos=event.pos)
 							if action_idx is not None:
-								game_engine.combat_engine.try_cancel_move(action_idx=action_idx)  # TODO: Should be exposed by game_engine
+								game_engine.combat_engine.try_cancel_move(
+									action_idx=action_idx)  # TODO: Should be exposed by game_engine
 								update_ui_elements()
 							sprite_idx = None
-						else: sprite_idx = None
-					else:
-						sprite_idx = game_engine.player.pick_moving(attacker=game_engine.attacker_and_idx[0],
-						                                            heroes=game_engine.heroes.party,
-						                                            enemies=game_engine.current_encounter.enemies)
-					if sprite_idx is not None:
-						game_engine.process_move(idx=sprite_idx)
-						game_engine.tick()
-						update_ui_elements()
-				elif event.type == pygame.MOUSEMOTION:
-					if event_in_ui_element(event, encounter_preview):
-						sprite_idx = encounter_preview.check_colliding_entity(pos=event.pos)
-						if sprite_idx is not None:
-							encounter_preview.update_moving_to(sprite_idx=sprite_idx,
-							                                   attacker=game_engine.attacker_and_idx[0])
+					elif event.type == pygame.MOUSEMOTION:
+						if event_in_ui_element(event, encounter_preview):
+							hovered_sprite_idx = encounter_preview.check_colliding_entity(pos=event.pos)
+							if hovered_sprite_idx is not None:
+								encounter_preview.update_moving_to(sprite_idx=hovered_sprite_idx,
+								                                   attacker=game_engine.attacker_and_idx[0])
+				else:
+					sprite_idx = game_engine.player.pick_moving(
+						**{'attacker_type': game_engine.attacker_and_idx[0].__class__,
+						   'n_heroes': len(game_engine.heroes.party),
+						   'n_enemies': len(game_engine.current_encounter.enemies)})
+				if sprite_idx is not None:
+					game_engine.process_move(idx=sprite_idx)
+					game_engine.tick()
+					update_ui_elements()
 					
 	for msg in msg_system.get_queue():
 		events_history.add_text_and_scroll(msg)
 		
 	ui_manager.update(time_delta)
-	screen.fill('#121212')
+	if appstate == AppState.IN_GAME:
+		screen.fill('#121212')  # TODO: Fill once game has started
 	
 	if game_engine.state == GameState.GAME_OVER:
 		if game_over_window.background_image is None:

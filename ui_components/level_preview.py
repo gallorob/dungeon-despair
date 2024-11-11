@@ -1,4 +1,4 @@
-from typing import Dict, List, Union
+from typing import Dict, List, Union, Optional
 
 import pygame
 import pygame_gui
@@ -14,6 +14,7 @@ from dungeon_despair.domain.level import Level
 from dungeon_despair.domain.room import Room
 from dungeon_despair.domain.utils import Direction
 from utils import basic_room_description
+from engine.movement_engine import Destination
 
 
 class LevelPreview(UIWindow):
@@ -150,12 +151,12 @@ class LevelPreview(UIWindow):
 	def update(self, time_delta: float):
 		super().update(time_delta)
 	
-	def check_clicked_encounter(self, pos):
+	def check_clicked_encounter(self, pos) -> Optional[Destination]:
 		if self.allow_movement:
 			for encounter in self.map:
 				if encounter.rect.collidepoint(pos):
-					return self._map_areas[encounter].name, self._map_idxs.get(encounter, -1)
-		return None, -1
+					return Destination(to=self._map_areas[encounter].name, idx=self._map_idxs.get(encounter, -1))
+		return None
 	
 	def update_minimap(self, clicked_room_name, encounter_idx):
 		# Remove custom theming

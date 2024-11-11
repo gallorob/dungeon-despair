@@ -1,4 +1,5 @@
 from enum import Enum, auto
+import random
 from typing import List, Tuple, Union, Optional
 
 from dungeon_despair.domain.attack import Attack
@@ -8,10 +9,10 @@ from engine.actions_engine import ActionEngine, LootingChoice
 from engine.combat_engine import CombatEngine, CombatPhase
 from engine.message_system import msg_system
 from engine.modifier_system import ModifierSystem
-from engine.movement_engine import MovementEngine
+from engine.movement_engine import MovementEngine, Destination
 from engine.stress_system import stress_system
 from heroes_party import get_temp_heroes, Hero, HeroParty
-from player.base_player import Player
+from player.base_player import Player, PlayerType
 
 
 class GameState(Enum):
@@ -43,7 +44,8 @@ class GameEngine:
 		'''Set the scenario and prepare to play'''
 		self.scenario = level
 		self.state = GameState.IDLE
-		self.move_to(area=self.scenario.current_room)
+		self.move_to(dest=Destination(to=self.scenario.current_room,
+		                              idx=-1))
 	
 	def tick(self):
 		'''Update the state of the game based on the current scenario state'''
@@ -72,13 +74,17 @@ class GameEngine:
 		
 		# Check for dead entities
 		self.check_for_dead()
-		# Update the game state, if possible
 		if self.state == GameState.IDLE:
 			try_combat()
-		if self.state == GameState.IDLE:
-			try_trap()
-		if self.state == GameState.IDLE:
+			if self.state == GameState.IDLE: try_trap()
+			if self.state == GameState.IDLE: try_treasure()
+		# Update the game state, if possible
+		elif self.state == GameState.INSPECTING_TRAP:
 			try_treasure()
+			if self.state == GameState.INSPECTING_TRAP: self.state = GameState.IDLE
+		elif self.state == GameState.INSPECTING_TREASURE:
+			try_trap()
+			if self.state == GameState.INSPECTING_TREASURE: self.state = GameState.IDLE
 		if self.state == GameState.IN_COMBAT:
 			if self.combat_engine.state == CombatPhase.PICK_ATTACK:
 				self.combat_engine.tick(heroes=self.heroes)
@@ -106,17 +112,15 @@ class GameEngine:
 			self.check_game_over()
 		
 	def move_to(self,
-	            area: str,
-	            encounter_idx: int = -1):
+	            dest: Destination):
 		'''Move the hero party to another area of the level'''
 		if self.movement_engine.current_room is None or \
 				self.movement_engine.reachable(level=self.scenario,
-				                               dest_name=area,
-				                               idx=encounter_idx):
+				                               dest=dest):
 			self.movement_engine.move_to(level=self.scenario,
-			                             dest_name=area,
-			                             encounter_idx=encounter_idx)
-			self.tick()
+			                             dest=dest)
+			if self.heroes_player.type == PlayerType.AI:
+				self.heroes_player.update_visited_areas(dest)
 	
 	@property
 	def current_room(self):
@@ -139,7 +143,10 @@ class GameEngine:
 	
 	@property
 	def player(self) -> Player:
-		return self.heroes_player if isinstance(self.combat_engine.attacker, Hero) else self.enemies_player
+		if self.state == GameState.IN_COMBAT:
+			return self.heroes_player if isinstance(self.combat_engine.attacker, Hero) else self.enemies_player
+		else:
+			return self.heroes_player
 	
 	def process_attack(self,
 	                   attack_idx: int) -> None:
@@ -170,19 +177,21 @@ class GameEngine:
 		'''Process disarming a trap'''
 		self.actions_engine.resolve_trap_encounter(encounter=self.movement_engine.current_encounter,
 		                                           heroes=self.heroes)
-		self.state = GameState.IDLE
 	
 	def process_looting(self,
 	                    choice: LootingChoice) -> None:
 		'''Process looting a treasure'''
+		encounter = self.movement_engine.current_encounter
+		treasure = encounter.treasures[0]
+		hero = random.choice(self.heroes.party)
 		if choice == LootingChoice.LOOT or choice == LootingChoice.INSPECT_AND_LOOT:
-			self.actions_engine.resolve_treasure_encounter(encounter=self.movement_engine.current_encounter,
-			                                               heroes=self.heroes,
+			self.actions_engine.resolve_treasure_encounter(treasure=treasure,
+			                                               hero=hero,
+			                                               encounter=encounter,
 			                                               choice=choice)
 		else:
-			msg_system.ignore_looting()
-			stress_system.ignore_looting()
-		self.state = GameState.IDLE
+			msg_system.ignore_looting(hero=hero, treasure=treasure)
+			stress_system.process_ignore_looting(hero=hero, treasure=treasure)
 	
 	def targeted(self,
 	             idx: int) -> List[int]:
