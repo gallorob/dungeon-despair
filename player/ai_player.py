@@ -53,6 +53,8 @@ class AIPlayer(Player):
 			stress_system.stress -= stress_diff  # reset stress to before simulation
 			stress_diff *= 1 if isinstance(attacker, Hero) else -1  # heroes want to minimize their stress
 			stress_diffs.append(stress_diff)
+			del eng_copy
+		del self.game_engine_copy
 		msg_system.queue = curr_msg_queue  # reset messages queue to before simulation
 		return stress_diffs.index(min(stress_diffs))
 	

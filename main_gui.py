@@ -219,6 +219,7 @@ while running:
 				                      heroes=heroes)
 				game_engine.heroes = heroes
 				game_engine.set_level(level)
+				game_engine.tick()
 				appstate = AppState.IN_GAME
 				# Initialize in-game screens
 				level_preview.show()
@@ -330,7 +331,7 @@ while running:
 		
 	ui_manager.update(time_delta)
 	if appstate == AppState.IN_GAME:
-		screen.fill('#121212')  # TODO: Fill once game has started
+		screen.fill('#121212')
 	
 	if game_engine.state == GameState.GAME_OVER:
 		if game_over_window.background_image is None:
