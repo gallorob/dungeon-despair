@@ -1,1 +1,1 @@
-python .\dd_cli.py run_simulation .\my_scenarios\t5.bin ai 5 ./cli_test.log
+python .\dd_cli.py run_simulation .\my_scenarios\t5_v3.bin ai 5 ./cli_test.log
