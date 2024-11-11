@@ -100,13 +100,26 @@ game_engine: GameEngine = GameEngine(heroes_player=heroes_player,
 file_dlg = pygame_gui.windows.ui_file_dialog.UIFileDialog(
 	rect=pygame.Rect(configs.ui.screen_width / 4, configs.ui.screen_height / 4,
 	                 configs.ui.screen_width / 2, configs.ui.screen_height / 2),
-	manager=None,
+	manager=ui_manager,
 	window_title='Choose a scenario',
 	initial_file_path='./my_scenarios',
 	allow_existing_files_only=False,
 	allow_picking_directories=False,
 	always_on_top=True)
 file_dlg.show()
+
+# Exit game dialog
+exit_dlg = None
+def get_exit_dlg():
+	return pygame_gui.windows.UIConfirmationDialog(
+	rect=pygame.Rect(configs.ui.screen_width / 4, configs.ui.screen_height / 4,
+	                 configs.ui.screen_width / 4, configs.ui.screen_height / 6),
+	manager=ui_manager,
+    window_title="Exit Confirmation",
+    action_long_desc="Do you really want to close the game?",
+    action_short_name="Yes",
+    blocking=True,
+	always_on_top=True)
 
 # Define a clock to control the frame rate
 clock = pygame.time.Clock()
@@ -171,6 +184,17 @@ while running:
 		
 		if event.type == pygame.QUIT:
 			running = False
+		
+		elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+			exit_dlg = get_exit_dlg()
+		
+		if event.type == pygame_gui.UI_CONFIRMATION_DIALOG_CONFIRMED:
+			if event.ui_element == exit_dlg:
+				running = False
+		
+		elif event.type == pygame_gui.UI_WINDOW_CLOSE:
+			if event.ui_element == exit_dlg:
+				exit_dlg = None
 		
 		elif game_engine.state == GameState.LOADING:
 			# Closing the level loading dialog will close the application
