@@ -35,10 +35,10 @@ class ModifierSystem:
 		if modifier is not None:
 			if random.random() <= modifier.chance:
 				# check if target already has this type of modifier
-				for existing_modifier in target.modifiers:
+				for i, existing_modifier in enumerate(target.modifiers):
 					if existing_modifier.type == modifier.type:
 						# refresh existing modifier
-						existing_modifier.turns = modifier.turns
+						target.modifiers[i] = modifier
 						msg_system.add_msg(f'<b>{target.name}</b>\'s {modifier.type} refreshes!')
 						break
 				else:
