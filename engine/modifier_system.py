@@ -34,8 +34,16 @@ class ModifierSystem:
 	                     modifier: Modifier) -> None:
 		if modifier is not None:
 			if random.random() <= modifier.chance:
-				# TODO: Refresh modifiers of the same type as the one being added
-				target.modifiers.append(copy.deepcopy(modifier))
-				msg_system.add_msg(f'<b>{target.name}</b> receives a {modifier.type} modifier!')
+				# check if target already has this type of modifier
+				for existing_modifier in target.modifiers:
+					if existing_modifier.type == modifier.type:
+						# refresh existing modifier
+						existing_modifier.turns = modifier.turns
+						msg_system.add_msg(f'<b>{target.name}</b>\'s {modifier.type} refreshes!')
+						break
+				else:
+					# add new modifier to target
+					target.modifiers.append(copy.deepcopy(modifier))
+					msg_system.add_msg(f'<b>{target.name}</b> receives a {modifier.type} modifier!')
 
 		
