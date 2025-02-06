@@ -4,11 +4,22 @@ from configs import configs
 from dungeon_despair.domain.entities.enemy import Enemy
 from dungeon_despair.domain.entities.hero import Hero
 from dungeon_despair.domain.entities.treasure import Treasure
+from dungeon_despair.domain.utils import ModifierType
 
 
 class StressSystem:
 	def __init__(self):
 		self.stress = 0
+	
+	def get_stress_resist(self, hero: Hero) -> float:
+		resist = hero.resist
+		# check for 'scare' modifier
+		for modifier in hero.modifiers:
+			if modifier.type == ModifierType.SCARE:
+				resist -= modifier.amount
+		# no negative resist
+		resist = max(0.0, resist)
+		return resist
 	
 	def process_movement(self):
 		self.stress += configs.game.stress.movement
@@ -30,7 +41,7 @@ class StressSystem:
 		stress_diff = hyp_dmg / 2
 		if isinstance(attacker, Hero):
 			stress_diff *= -1
-			stress_diff *= (1 - attacker.stress_resist)
+			stress_diff *= (1 - self.get_stress_resist(attacker))
 		self.stress += int(stress_diff)
 	
 	def process_damage(self,
@@ -39,7 +50,7 @@ class StressSystem:
 		stress_diff = dmg
 		if isinstance(attacker, Hero):
 			stress_diff *= -1
-			stress_diff *= (1 - attacker.stress_resist)
+			stress_diff *= (1 - self.get_stress_resist(attacker))
 		self.stress += int(stress_diff)
 	
 	def process_bleed(self,
@@ -62,7 +73,7 @@ class StressSystem:
 	                 attacker: Union[Hero, Enemy]):
 		stress_diff = configs.game.stress.passing
 		if isinstance(attacker, Hero):
-			stress_diff *= 1 - attacker.stress_resist
+			stress_diff *= 1 - self.get_stress_resist(attacker)
 		else:
 			stress_diff *= -1
 		self.stress += int(stress_diff)
@@ -71,7 +82,7 @@ class StressSystem:
 	                 attacker: Union[Hero, Enemy]):
 		stress_diff = configs.game.stress.switch_position
 		if isinstance(attacker, Hero):
-			stress_diff *= 1 - attacker.stress_resist
+			stress_diff *= 1 - self.get_stress_resist(attacker)
 		else:
 			stress_diff *= -1
 		self.stress += int(stress_diff)
@@ -88,7 +99,7 @@ class StressSystem:
 	                               inspected: bool):
 		stress_diff = configs.game.stress.trigger_trapped_treasure + dmg_dealt
 		stress_diff -= configs.game.stress.no_inspect_treasure if not inspected else 0
-		stress_diff *= (1 - hero.stress_resist)
+		stress_diff *= (1 - self.get_stress_resist(hero))
 		self.stress += int(stress_diff)
 	
 	def process_safe_treasure(self,
@@ -101,7 +112,7 @@ class StressSystem:
 	                           treasure: Treasure,
 	                           hero: Hero):
 		stress_diff = configs.game.stress.ignore_treasure
-		stress_diff *= (1 - hero.stress_resist)
+		stress_diff *= (1 - self.get_stress_resist(hero))
 		self.stress += int(stress_diff)
 	
 	def process_trap(self,
@@ -113,7 +124,7 @@ class StressSystem:
 		else:
 			stress_diff = configs.game.stress.trigger_trap
 			stress_diff += dmg_dealt
-			stress_diff *= (1 - hero.stress_resist)
+			stress_diff *= (1 - self.get_stress_resist(hero))
 		self.stress += int(stress_diff)
 		
 	
