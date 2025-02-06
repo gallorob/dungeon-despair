@@ -155,6 +155,11 @@ class GameEngine:
 		self.combat_engine.process_attack(heroes=self.heroes,
 		                                  idx=attack_idx)
 	
+	def try_cancel_attack(self,
+	                  attack_idx: int) -> None:
+		'''Attempt to cancel the attack with the provided index'''
+		self.combat_engine.try_cancel_move(action_idx=attack_idx)
+	
 	def process_move(self,
 	                 idx) -> None:
 		'''Move the current attacker to the specified position'''

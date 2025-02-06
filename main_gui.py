@@ -306,8 +306,7 @@ while running:
 						elif event_in_ui_element(event, action_window):
 							action_idx = action_window.check_colliding_action(pos=event.pos)
 							if action_idx is not None:
-								game_engine.combat_engine.try_cancel_move(
-									action_idx=action_idx)  # TODO: Should be exposed by game_engine
+								game_engine.try_cancel_attack(attack_idx=action_idx)
 								update_ui_elements()
 							sprite_idx = None
 					elif event.type == pygame.MOUSEMOTION:
