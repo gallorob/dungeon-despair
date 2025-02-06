@@ -12,7 +12,7 @@ class StressSystem:
 		self.stress = 0
 	
 	def get_stress_resist(self, hero: Hero) -> float:
-		resist = hero.resist
+		resist = hero.stress_resist
 		# check for 'scare' modifier
 		for modifier in hero.modifiers:
 			if modifier.type == ModifierType.SCARE:
