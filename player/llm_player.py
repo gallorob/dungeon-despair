@@ -31,8 +31,8 @@ class LLMPlayer(Player):
 		response = output['message']['content']
 		return response
 	
-	def pick_attack(self,
-	                attacks) -> int:
+	def pick_actions(self,
+	                 attacks) -> int:
 		attacks_names = [attack.name for attack in attacks]
 		attacks_formatted = ''
 		for attack, targets, dmgs in zip(self.context.attacks, self.context.targeted, self.context.expected_dmg):

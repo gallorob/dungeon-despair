@@ -2,7 +2,6 @@ from typing import List
 
 from dungeon_despair.domain.encounter import Encounter
 from engine.game_engine import GameEngine
-from utils import get_current_encounter
 
 
 class CombatContext:
@@ -45,8 +44,7 @@ class ContextManager:
 	def get_combat_context(self,
 	                       game_engine: GameEngine,
 	                       events_history: List[str]) -> CombatContext:
-		curr_encounter = get_current_encounter(level=game_engine.game_data,
-		                                       encounter_idx=game_engine.movement_engine.encounter_idx)
+		curr_encounter = game_engine.movement_engine.current_encounter
 		context = CombatContext()
 		# get heroes status
 		context.heroes_status = game_engine.heroes.get_party_status()
@@ -88,8 +86,7 @@ class ContextManager:
 	
 	def get_treasure_context(self,
 	                         game_engine: GameEngine) -> TreasureContext:
-		curr_encounter = get_current_encounter(level=game_engine.game_data,
-		                                       encounter_idx=game_engine.movement_engine.encounter_idx)
+		curr_encounter = game_engine.movement_engine.current_encounter
 		context = TreasureContext()
 		# get heroes status
 		context.heroes_status = game_engine.heroes.get_party_status()
@@ -103,8 +100,7 @@ class ContextManager:
 	
 	def get_trap_context(self,
 	                     game_engine: GameEngine) -> TrapContext:
-		curr_encounter = get_current_encounter(level=game_engine.game_data,
-		                                       encounter_idx=game_engine.movement_engine.encounter_idx)
+		curr_encounter = game_engine.movement_engine.current_encounter
 		context = TrapContext()
 		# get heroes status
 		context.heroes_status = game_engine.heroes.get_party_status()
