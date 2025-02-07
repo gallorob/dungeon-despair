@@ -48,14 +48,12 @@ class MovementEngine:
 		'''Compute all available destinations for the current encounter'''
 		destinations = []
 		if isinstance(self.current_room, Room):
-			# TODO: Use level.connections instead
-			for corridor in level.corridors.values():
+			for corridor in level.get_corridors_by_room(level.current_room):
 				if corridor.room_from == self.current_room.name:
 					destinations.append(Destination(corridor.name, 0))
 				elif corridor.room_to == self.current_room.name:
 					destinations.append(Destination(corridor.name, corridor.length - 1))
 		else:
-			# TODO: This could definitely be written better...
 			if self.encounter_idx == 0:
 				destinations.append(Destination(self.current_room.name, 1))
 				destinations.append(Destination(self.current_room.room_from, -1))
