@@ -16,6 +16,7 @@ from dungeon_despair.domain.configs import config as ddd_config
 from dungeon_despair.domain.entities.enemy import Enemy
 from dungeon_despair.domain.level import Level
 from dungeon_despair.domain.room import Room
+from dungeon_despair.domain.utils import ActionType, get_enum_by_value
 from engine.actions_engine import LootingChoice
 from engine.combat_engine import CombatPhase
 from engine.game_engine import GameEngine, GameState
@@ -317,9 +318,14 @@ while running:
 								                                   attacker=game_engine.attacker_and_idx[0])
 				else:
 					sprite_idx = game_engine.player.pick_moving(
-						**{'attacker_type': game_engine.attacker_and_idx[0].__class__,
-						   'n_heroes': len(game_engine.heroes.party),
-						   'n_enemies': len(game_engine.current_encounter.enemies)})
+						**{'n_heroes': len(game_engine.heroes.party),
+						   'n_enemies': len(game_engine.current_encounter.enemies),
+						   'game_engine_copy': copy.deepcopy(game_engine)})
+					if sprite_idx is None:
+						move_action = [action for action in game_engine.combat_engine.actions if get_enum_by_value(ActionType, action.type) == ActionType.MOVE][0]
+						game_engine.try_cancel_attack(attack_idx=game_engine.combat_engine.actions.index(move_action))
+						game_engine.tick()
+						update_ui_elements()
 				if sprite_idx is not None:
 					game_engine.process_move(idx=sprite_idx)
 					game_engine.tick()

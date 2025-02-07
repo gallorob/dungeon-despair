@@ -59,17 +59,28 @@ class AIPlayer(Player):
 		return stress_diffs.index(min(stress_diffs))
 	
 	def pick_moving(self,
-	                **kwargs) -> int:
-		# TODO: Decide what to optimize when moving
-		attacker_type = kwargs['attacker_type']
+	                **kwargs) -> Optional[int]:
 		n_heroes = kwargs['n_heroes']
 		n_enemies = kwargs['n_enemies']
-		if attacker_type == Hero:
-			idx = random.choice(range(n_heroes))
-			return idx
-		else:
-			idx = random.choice(range(n_enemies))
-			return idx + n_heroes
+		self.game_engine_copy = kwargs['game_engine_copy']
+		# move to maximize number of possible attacks
+		n_attacks = sum([1 if x.active else 0 for x in self.game_engine_copy.combat_engine.actions])
+		curr_idx = self.game_engine_copy.attacker_and_idx[1]
+		idxs_range = range(0, n_heroes) if curr_idx < n_heroes else range(n_heroes, n_heroes + n_enemies)
+		for i, idx in enumerate(idxs_range):
+			if idx != curr_idx:
+				eng_copy = copy.deepcopy(self.game_engine_copy)
+				eng_copy.process_move(idx=idx)
+				eng_copy.tick()
+				new_n_attacks = sum([1 if x.active else 0 for x in self.game_engine_copy.combat_engine.actions])
+				if new_n_attacks > n_attacks:
+					curr_idx = idx
+					n_attacks = new_n_attacks
+		# if no movement increases number of possible attacks, cancel the move
+		if curr_idx == self.game_engine_copy.attacker_and_idx[1]:
+			return None
+		# else, process the move
+		return curr_idx
 	
 	def pick_destination(self,
 	                     **kwargs) -> Destination:
