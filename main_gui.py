@@ -294,9 +294,12 @@ while running:
 					game_engine.process_attack(attack_idx=action_idx)
 					game_engine.tick()
 					update_ui_elements()
-					# TODO: This currently removes the targeted icons, but we could instead show the new attack's
-					#  targeted if we're hovering over, without waiting for the next mouse movement
-					encounter_preview.update_targeted([])
+					# If mouse is on an action, display the targeted icons without waiting for the next mouse movement
+					on_action = action_window.check_colliding_action(pos=event.pos)
+					if on_action is not None:
+						encounter_preview.update_targeted(idxs=game_engine.targeted(idx=on_action))
+					else:
+						encounter_preview.update_targeted([])
 				
 			elif game_engine.combat_engine.state == CombatPhase.CHOOSE_POSITION:
 				sprite_idx: Optional[int] = None
