@@ -63,6 +63,7 @@ class AIPlayer(Player):
 		n_heroes = kwargs['n_heroes']
 		n_enemies = kwargs['n_enemies']
 		self.game_engine_copy = kwargs['game_engine_copy']
+		curr_msg_queue = msg_system.get_queue()
 		# move to maximize number of possible attacks
 		n_attacks = sum([1 if x.active else 0 for x in self.game_engine_copy.combat_engine.actions])
 		curr_idx = self.game_engine_copy.attacker_and_idx[1]
@@ -76,6 +77,8 @@ class AIPlayer(Player):
 				if new_n_attacks > n_attacks:
 					curr_idx = idx
 					n_attacks = new_n_attacks
+		del self.game_engine_copy
+		msg_system.queue = curr_msg_queue  # reset messages queue to before simulation
 		# if no movement increases number of possible attacks, cancel the move
 		if curr_idx == self.game_engine_copy.attacker_and_idx[1]:
 			return None
