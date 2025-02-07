@@ -16,9 +16,6 @@ from player.base_player import Player, PlayerType
 from ui_components.action_menu import treasure_choices
 
 
-# TODO: Adding a simulation depth would allows heroes to move "tactfully"
-
-
 class AIPlayer(Player):
 	def __init__(self):
 		super().__init__(PlayerType.AI)
@@ -77,12 +74,11 @@ class AIPlayer(Player):
 				if new_n_attacks > n_attacks:
 					curr_idx = idx
 					n_attacks = new_n_attacks
-		del self.game_engine_copy
-		msg_system.queue = curr_msg_queue  # reset messages queue to before simulation
 		# if no movement increases number of possible attacks, cancel the move
 		if curr_idx == self.game_engine_copy.attacker_and_idx[1]:
-			return None
-		# else, process the move
+			curr_idx = None
+		del self.game_engine_copy
+		msg_system.queue = curr_msg_queue  # reset messages queue to before simulation
 		return curr_idx
 	
 	def pick_destination(self,
