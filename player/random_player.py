@@ -43,5 +43,5 @@ class RandomPlayer(Player):
 		return True
 	
 	def choose_loot_treasure(self,
-	                         **kwargs) -> Optional[LootingChoice]:
+	                         **kwargs) -> LootingChoice:
 		return random.choice(treasure_choices).looting_choice

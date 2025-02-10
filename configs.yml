@@ -39,3 +39,4 @@ game:
     hero_dies: 50
     passing: 10
     switch_position: 10
+  sim_depth: 5

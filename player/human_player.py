@@ -1,8 +1,9 @@
-from typing import List
+from typing import List, Optional
 
 from dungeon_despair.domain.entities.enemy import Enemy
 from dungeon_despair.domain.entities.entity import Entity
 from dungeon_despair.domain.entities.hero import Hero
+from engine.actions_engine import LootingChoice
 from player.base_player import Player, PlayerType
 
 
@@ -27,5 +28,5 @@ class HumanPlayer(Player):
 		pass
 	
 	def choose_loot_treasure(self,
-	                         **kwargs) -> bool:
+	                         **kwargs) -> LootingChoice:
 		pass

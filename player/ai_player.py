@@ -14,6 +14,7 @@ from engine.movement_engine import Destination
 from engine.stress_system import stress_system
 from player.base_player import Player, PlayerType
 from ui_components.action_menu import treasure_choices
+from configs import configs
 
 
 class AIPlayer(Player):
@@ -29,10 +30,6 @@ class AIPlayer(Player):
 			self.visited_areas[k] += 1
 		else:
 			self.visited_areas[k] = 1
-	
-	def simulate_combat(self,
-	                    depth: int):
-		pass
 	
 	def pick_actions(self,
 	                 **kwargs) -> int:
@@ -95,20 +92,25 @@ class AIPlayer(Player):
 	
 	def choose_disarm_trap(self,
 	                       **kwargs) -> bool:
+		# There is no choice
 		return True
 	
 	def choose_loot_treasure(self,
-	                         **kwargs) -> Optional[LootingChoice]:
+	                         **kwargs) -> LootingChoice:
 		self.game_engine_copy = kwargs['game_engine_copy']
 		prev_stress = stress_system.stress
 		curr_msg_queue = msg_system.get_queue()
 		stress_diffs = []
 		for looting_choice in LootingChoice:
-			eng_copy = copy.deepcopy(self.game_engine_copy)
-			eng_copy.process_looting(choice=looting_choice)
-			eng_copy.tick()
-			stress_diff = stress_system.stress - prev_stress
-			stress_system.stress -= stress_diff  # reset stress to before simulation
-			stress_diffs.append(stress_diff)
+			avg_stress_diffs = []
+			# Multiple attempts for more informed choice
+			for _ in range(configs.game.sim_depth):
+				eng_copy = copy.deepcopy(self.game_engine_copy)
+				eng_copy.process_looting(choice=looting_choice)
+				eng_copy.tick()
+				stress_diff = stress_system.stress - prev_stress
+				stress_system.stress -= stress_diff  # reset stress to before simulation
+				avg_stress_diffs.append(stress_diff)
+			stress_diffs.append(np.mean(avg_stress_diffs))
 		msg_system.queue = curr_msg_queue  # reset messages queue to before simulation
 		return list(LootingChoice)[stress_diffs.index(min(stress_diffs))]
