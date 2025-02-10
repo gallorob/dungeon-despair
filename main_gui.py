@@ -295,7 +295,7 @@ while running:
 					game_engine.tick()
 					update_ui_elements()
 					# If mouse is on an action, display the targeted icons without waiting for the next mouse movement
-					on_action = action_window.check_colliding_action(pos=event.pos)
+					on_action = action_window.check_colliding_action(pos=event.pos) if hasattr(event, 'pos') else None
 					if on_action is not None:
 						encounter_preview.update_targeted(idxs=game_engine.targeted(idx=on_action))
 					else:
