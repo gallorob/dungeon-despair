@@ -29,6 +29,15 @@ class LevelPreview(UIWindow):
 		self._map_areas: Dict[UIButton, Union[Corridor, Room]] = {}
 		self._map_idxs: Dict[UIButton, int] = {}
 	
+	def reset_preview(self) -> None:
+		for button in self.map:
+			button.kill()		
+		self.map = []
+		self._map_areas = {}
+		self._map_idxs = {}
+		self.allow_movement = True
+
+
 	def get_encounter_text(self, encounter: Encounter):
 		enemies_text = f'x{len(encounter.enemies)}' if len(encounter.enemies) > 0 else '0'
 		trap_text = ',X' if len(encounter.traps) > 0 else ''

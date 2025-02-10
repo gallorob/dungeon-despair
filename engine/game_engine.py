@@ -21,6 +21,7 @@ class GameState(Enum):
 	IN_COMBAT: int = auto()
 	INSPECTING_TRAP: int = auto()
 	INSPECTING_TREASURE: int = auto()
+	WAVE_OVER: int = auto()
 	GAME_OVER: int = auto()
 
 
@@ -39,11 +40,19 @@ class GameEngine:
 		
 		self.state = GameState.LOADING
 		self.scenario = None
+
+		self.wave = 0
 	
 	def set_level(self, level: Level) -> None:
 		'''Set the scenario and prepare to play'''
 		self.scenario = level
 		self.state = GameState.IDLE
+
+		# TODO: Temporary fix, should be reset individually
+		self.combat_engine = CombatEngine()
+		self.movement_engine = MovementEngine()
+		self.actions_engine = ActionEngine()
+
 		self.move_to(dest=Destination(to=self.scenario.current_room,
 		                              idx=-1))
 	
@@ -100,14 +109,15 @@ class GameEngine:
 				self.combat_engine.tick(self.heroes)
 			elif self.combat_engine.state == CombatPhase.END_OF_COMBAT:
 				self.state = GameState.IDLE
+				self.check_for_dead()
+				self.check_wave_over()
 				if self.state == GameState.IDLE:
 					try_trap()
 				if self.state == GameState.IDLE:
 					try_treasure()
-				if self.state == GameState.IDLE:
-					self.check_for_dead()
 		if self.state == GameState.IDLE:
 			ModifierSystem.apply_and_tick_modifiers(self.heroes.party)
+			self.check_wave_over()
 			# Check for dead entities
 			self.check_for_dead()
 			self.check_game_over()
@@ -205,18 +215,20 @@ class GameEngine:
 		'''Get the indices of the positioned entities currently targeted'''
 		return self.combat_engine.targets_by_action[idx]
 	
+	def check_wave_over(self) -> None:
+		if len(self.heroes.party) == 0:
+			self.state = GameState.WAVE_OVER
+			msg_system.add_msg(f'<b>Wave #{self.wave + 1} is over</b>: all heroes are dead!')
+
 	def check_game_over(self) -> None:
 		'''Check if the game is over (based on the scenario objective)'''
 		# TODO: The game over check for heroes should depend on the scenario objective
-		if len(self.heroes.party) == 0:
-			self.state = GameState.GAME_OVER
-			msg_system.add_msg('Game over: all heroes are dead!')
 		n_enemies_left = 0
 		for room in self.scenario.rooms.values():
 			n_enemies_left += len(room.encounter.enemies)
 		for corridor in self.scenario.corridors.values():
 			for encounter in corridor.encounters:
 				n_enemies_left += len(encounter.enemies)
-		if n_enemies_left == 0:
+		if n_enemies_left == 0 and stress_system.stress <= 0:
 			self.state = GameState.GAME_OVER
-			msg_system.add_msg('Game over: all enemies are dead!')
+			msg_system.add_msg(f'<b>Game over</b>: not enough stress to rebuild the dungeon!')
