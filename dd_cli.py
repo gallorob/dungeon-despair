@@ -4,6 +4,7 @@ import os
 from enum import Enum, auto
 from typing import List, Union, Dict, Any
 
+from dungeon_despair.domain.utils import ActionType, get_enum_by_value
 import fire
 from tqdm.auto import tqdm
 
@@ -177,10 +178,14 @@ class Simulator:
 			# In combat, choosing position
 			elif eng.state == GameState.IN_COMBAT and eng.combat_engine.state == CombatPhase.CHOOSE_POSITION:
 				entity_idx = eng.player.pick_moving(
-					**{'attacker_type': eng.attacker_and_idx[0].__class__,
+					**{'game_engine_copy': copy.deepcopy(eng),
 					   'n_heroes': len(eng.heroes.party),
 					   'n_enemies': len(eng.current_encounter.enemies)})
-				eng.process_move(idx=entity_idx)
+				if entity_idx is not None:
+					eng.process_move(idx=entity_idx)
+				else:
+					move_action = [action for action in eng.combat_engine.actions if get_enum_by_value(ActionType, action.type) == ActionType.MOVE][0]
+					eng.try_cancel_attack(attack_idx=eng.combat_engine.actions.index(move_action))
 			# In combat, choosing attack
 			elif eng.state == GameState.IN_COMBAT and eng.combat_engine.state == CombatPhase.PICK_ATTACK:
 				action_idx = eng.player.pick_actions(**{'actions': eng.actions,
