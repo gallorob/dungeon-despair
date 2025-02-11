@@ -17,7 +17,7 @@ from dungeon_despair.domain.level import Level
 from dungeon_despair.domain.room import Room
 from engine.combat_engine import CombatPhase
 from engine.game_engine import GameEngine, GameState
-from heroes_party import get_temp_heroes
+from heroes_party import generate_new_party, get_temp_heroes
 from player.ai_player import AIPlayer
 from player.base_player import PlayerType
 from player.random_player import RandomPlayer
@@ -173,8 +173,8 @@ class Simulator:
 				eng.process_looting(choice=choice)
 			# Disarm traps
 			elif eng.state == GameState.INSPECTING_TRAP:
-				idx = eng.player.choose_disarm_trap()
-				eng.process_disarm()
+				if eng.player.choose_disarm_trap():
+					eng.process_disarm()
 			# In combat, choosing position
 			elif eng.state == GameState.IN_COMBAT and eng.combat_engine.state == CombatPhase.CHOOSE_POSITION:
 				entity_idx = eng.player.pick_moving(
@@ -191,7 +191,10 @@ class Simulator:
 				action_idx = eng.player.pick_actions(**{'actions': eng.actions,
 				                                        'game_engine_copy': copy.deepcopy(eng)})
 				eng.process_attack(attack_idx=action_idx)
-				
+			# On end of wave, terminate simulation (we only simulate with fixed heroes, so one wave)
+			elif eng.state == GameState.WAVE_OVER:
+				eng.state = GameState.GAME_OVER
+				msgs.append('RUN OVER\tSimulation interrupted: heroes party was wiped out!')
 			# Update steps counter
 			n_step += 1
 			run_data.n_steps += 1
