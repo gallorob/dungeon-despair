@@ -1,3 +1,4 @@
+from typing import List
 import pygame
 from PIL import Image
 from pygame import Surface
@@ -56,15 +57,64 @@ def rich_attack_description(attack: Attack) -> str:
 		s += f'\n{str(attack.modifier)}'
 	return s
 
+
 def set_ingame_properties(game_data: Level, heroes: HeroParty) -> None:
 	for hero in heroes.party:
 		hero.max_hp = hero.hp
 	
 	for room in game_data.rooms.values():
-		for enemy in room.encounter.entities['enemy']:
+		for enemy in room.encounter.enemies:
 			enemy.max_hp = enemy.hp
+			tot_dmg = 0
+			for attack in enemy.attacks:
+				tot_dmg += attack.base_dmg * attack.accuracy
+			enemy.cost = enemy.max_hp + tot_dmg
+		for treasure in room.encounter.treasures:
+			treasure.cost = treasure.dmg * treasure.trapped_chance
 	
 	for corridor in game_data.corridors.values():
 		for encounter in corridor.encounters:
-			for enemy in encounter.entities['enemy']:
+			for enemy in encounter.enemies:
 				enemy.max_hp = enemy.hp
+				tot_dmg = 0
+				for attack in enemy.attacks:
+					tot_dmg += attack.base_dmg * attack.accuracy
+				enemy.cost = enemy.max_hp + tot_dmg
+			for trap in encounter.traps:
+				trap.cost = trap.dmg * trap.chance
+			for treasure in encounter.treasures:
+				treasure.cost = treasure.dmg * treasure.trapped_chance
+
+
+def get_entities_differences(ref_level: Level, curr_level: Level) -> List[Entity]:
+	# Get a list of all entities that are NOT present in curr_level but are in ref_level
+	diff_entities = []
+	for room_name in ref_level.rooms.keys():
+		ref_enemies = [f'{x.name}__{x.hp}' for x in ref_level.rooms[room_name].encounter.enemies]
+		curr_enemies = [f'{x.name}__{x.hp}' for x in curr_level.rooms[room_name].encounter.enemies]
+		for i, ref_enemy in enumerate(ref_enemies):
+			if ref_enemy not in curr_enemies:
+				diff_entities.append(ref_level.rooms[room_name].encounter.enemies[i])
+		ref_treasures = [f'{x.name}' for x in ref_level.rooms[room_name].encounter.treasures]
+		curr_treasures = [f'{x.name}' for x in curr_level.rooms[room_name].encounter.treasures]
+		for i, ref_treasure in enumerate(ref_treasures):
+			if ref_treasure not in curr_treasures:
+				diff_entities.append(ref_level.rooms[room_name].encounter.treasures[i])
+	for corridor_name in ref_level.corridors.keys():
+		for i, encounter in enumerate(ref_level.corridors[corridor_name].encounters):
+			ref_enemies = [f'{x.name}__{x.hp}' for x in encounter.enemies]
+			curr_enemies = [f'{x.name}__{x.hp}' for x in curr_level.corridors[corridor_name].encounters[i].enemies]
+			for j, ref_enemy in enumerate(ref_enemies):
+				if ref_enemy not in curr_enemies:
+					diff_entities.append(ref_level.rooms[room_name].encounter.enemies[j])
+			ref_traps = [f'{x.name}' for x in encounter.traps]
+			curr_traps = [f'{x.name}' for x in curr_level.corridors[corridor_name].encounters[i].traps]
+			for j, ref_trap in enumerate(ref_traps):
+				if ref_trap not in curr_traps:
+					diff_entities.append(ref_level.corridors[room_name].encounter.traps[j])
+			ref_treasures = [f'{x.name}' for x in encounter.treasures]
+			curr_treasures = [f'{x.name}' for x in curr_level.corridors[corridor_name].encounters[i].treasures]
+			for j, ref_treasure in enumerate(ref_treasures):
+				if ref_treasure not in curr_treasures:
+					diff_entities.append(ref_level.corridors[room_name].encounter.treasures[j])
+	return diff_entities

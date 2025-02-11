@@ -33,7 +33,7 @@ from ui_components.encounter_preview import EncounterPreview
 from ui_components.events_history import EventsHistory
 from ui_components.gameover_window import GameOver
 from ui_components.level_preview import LevelPreview
-from utils import set_ingame_properties
+from utils import get_entities_differences, set_ingame_properties
 
 # TODO: Sleep/have some delay between heroes actions, maybe configurable?
 
@@ -220,10 +220,10 @@ while running:
 			if event.type == pygame_gui.UI_FILE_DIALOG_PATH_PICKED:
 				selected_file_path = event.text
 				level = Level.load_as_scenario(selected_file_path)
-				level_copy = copy.deepcopy(level)
 				heroes = generate_new_party(wave_n=game_engine.wave)
 				set_ingame_properties(game_data=level,
 				                      heroes=heroes)
+				level_copy = copy.deepcopy(level)
 				game_engine.heroes = heroes
 				game_engine.set_level(level)
 				game_engine.tick()
@@ -345,13 +345,17 @@ while running:
 			elif game_engine.state == GameState.WAVE_OVER:
 				game_engine.wave += 1
 				stress_system.score += stress_system.stress
+				diff_entities = get_entities_differences(ref_level=level_copy, curr_level=game_engine.scenario)
+				sum_costs = int(sum([x.cost for x in diff_entities]))
+				msg_system.add_msg(f'Current stress: {stress_system.stress}; total level regeneration will cost {sum_costs} stress points.')
 				# At the end of a wave, the level is restored based on how much stress the player accumulated
 				# Then, more heroes are sent to the dungeon
 				# TODO: This is temporary, players should choose where to spend their stress to restore parts of the dungeon
-				if stress_system.stress > 0:
+				if stress_system.stress > sum_costs:
 					old_level = copy.deepcopy(level_copy)
-					stress_system.stress = 0
+					stress_system.stress -= sum_costs
 				else:
+					msg_system.add_msg(f'Not enough stress points! The dungeon will remain as is...')
 					old_level = copy.deepcopy(game_engine.scenario)
 				heroes = generate_new_party(wave_n=game_engine.wave)
 				set_ingame_properties(game_data=old_level,
