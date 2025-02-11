@@ -165,7 +165,8 @@ class Simulator:
 		while eng.state != GameState.GAME_OVER and n_step < max_steps:
 			# Move to a new room
 			if eng.state == GameState.IDLE:
-				dest = eng.heroes_player.pick_destination(destinations=eng.movement_engine.destinations)
+				dest = eng.heroes_player.pick_destination(destinations=eng.movement_engine.destinations,
+										   				  unk_areas=eng.movement_engine.unk_areas)
 				eng.move_to(dest=dest)
 			# Loot treasures
 			elif eng.state == GameState.INSPECTING_TREASURE:

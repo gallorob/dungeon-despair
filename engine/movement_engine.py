@@ -1,9 +1,10 @@
-from typing import List, Optional, Union
+from typing import Dict, List, Optional, Union
 
 from dungeon_despair.domain.corridor import Corridor
 from dungeon_despair.domain.encounter import Encounter
 from dungeon_despair.domain.level import Level
 from dungeon_despair.domain.room import Room
+from dungeon_despair.domain.utils import Direction, make_corridor_name
 from engine.message_system import msg_system
 from engine.stress_system import stress_system
 
@@ -24,6 +25,7 @@ class MovementEngine:
 		self.encounter_idx = -1
 		self.current_room: Optional[Union[Corridor, Room]] = None
 		self.destinations: List[Destination] = []
+		self.unk_areas: Dict[str, int] = {}
 	
 	@property
 	def current_encounter(self) -> Encounter:
@@ -65,6 +67,33 @@ class MovementEngine:
 				destinations.append(Destination(self.current_room.name, self.encounter_idx - 1))
 		return destinations
 	
+	def compute_unk_areas(self,
+					      level: Level,
+						  prev_area: Union[Corridor, Room]) -> Dict[Destination, int]:
+		unk_areas = {}
+		for destination in self.destinations:
+			print(destination)
+			if destination.to in level.rooms.keys():
+				n_rooms = 0
+				for direction in Direction:
+					if level.connections[destination.to][direction] != '':
+						corridor_name_a = make_corridor_name(room_from_name=destination.to, room_to_name=level.connections[destination.to][direction])
+						if corridor_name_a in level.corridors.keys():
+							corridor = level.corridors[corridor_name_a]
+						else:
+							corridor_name_b = make_corridor_name(room_from_name=level.connections[destination.to][direction], room_to_name=destination.to)
+							corridor = level.corridors[corridor_name_b]
+						if corridor.name != level.current_room:
+							rooms, _ = level.get_level_subset(corridor=corridor)
+							n_rooms += len(rooms)
+				unk_areas[str(destination)] = n_rooms
+			else:
+				corridor = level.corridors[destination.to]
+				rooms, _ = level.get_level_subset(corridor=corridor)
+				unk_areas[str(destination)] = len(rooms)
+		print(unk_areas)
+		return unk_areas
+
 	def move_to(self,
 	            level: Level,
 	            dest: Destination):
@@ -75,6 +104,7 @@ class MovementEngine:
 			self.encounter_idx = dest.idx
 			self.current_room = self.get_area(level)
 			self.destinations = self.compute_destinations(level)
+			self.unk_areas = self.compute_unk_areas(level, prev_area)
 			if prev_area is None or self.current_room.name != prev_area.name:
 				if isinstance(self.current_room, Room):
 					msg_system.add_msg(f'You enter <b>{self.current_room.name}</b>: <i>{self.current_room.description}</i>')

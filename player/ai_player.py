@@ -31,6 +31,14 @@ class AIPlayer(Player):
 		else:
 			self.visited_areas[k] = 1
 	
+	def pick_destination(self,
+	                     **kwargs) -> Destination:
+		destinations = kwargs['destinations']
+		areas_count = kwargs['unk_areas']
+		dest_count = [areas_count[str(destination)] + self.visited_areas.get(str(destination), 0) for destination in destinations]
+		destination = destinations[np.argmin(dest_count)]
+		return destination
+	
 	def pick_actions(self,
 	                 **kwargs) -> int:
 		self.game_engine_copy = kwargs['game_engine_copy']
@@ -77,18 +85,6 @@ class AIPlayer(Player):
 		del self.game_engine_copy
 		msg_system.queue = curr_msg_queue  # reset messages queue to before simulation
 		return curr_idx
-	
-	def pick_destination(self,
-	                     **kwargs) -> Destination:
-		destinations = kwargs['destinations']
-		probs = np.ones(len(destinations)) * (1 / len(destinations))
-		for i, destination in enumerate(destinations):
-			if str(destination) in self.visited_areas.keys():
-				probs[i] /= self.visited_areas[str(destination)]
-		probs /= np.sum(probs)
-		idx = np.random.choice(range(len(destinations)), p=probs)
-		destination = destinations[idx]
-		return destination
 	
 	def choose_disarm_trap(self,
 	                       **kwargs) -> bool:

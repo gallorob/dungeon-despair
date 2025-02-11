@@ -245,7 +245,8 @@ while running:
 						if event_in_ui_element(event, level_preview):
 							dest = level_preview.check_clicked_encounter(event.pos)
 				else:
-					dest = heroes_player.pick_destination(destinations=game_engine.movement_engine.destinations)
+					dest = heroes_player.pick_destination(destinations=game_engine.movement_engine.destinations,
+										   				  unk_areas=game_engine.movement_engine.unk_areas)
 				if dest is not None:
 					game_engine.move_to(dest=dest)
 					game_engine.tick()
