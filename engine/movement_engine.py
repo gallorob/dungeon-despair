@@ -72,7 +72,6 @@ class MovementEngine:
 						  prev_area: Union[Corridor, Room]) -> Dict[Destination, int]:
 		unk_areas = {}
 		for destination in self.destinations:
-			print(destination)
 			if destination.to in level.rooms.keys():
 				n_rooms = 0
 				for direction in Direction:
@@ -91,7 +90,6 @@ class MovementEngine:
 				corridor = level.corridors[destination.to]
 				rooms, _ = level.get_level_subset(corridor=corridor)
 				unk_areas[str(destination)] = len(rooms)
-		print(unk_areas)
 		return unk_areas
 
 	def move_to(self,
