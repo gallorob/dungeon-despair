@@ -104,9 +104,11 @@ class GameEngine:
 				ModifierSystem.apply_and_tick_modifiers(self.movement_engine.current_encounter.enemies)
 				# Check for dead entities
 				self.check_for_dead()
-				self.combat_engine.start_turn(heroes=self.heroes,
-				                              enemies=self.movement_engine.current_encounter.enemies)
-				self.combat_engine.tick(self.heroes)
+				self.check_wave_over()
+				if self.state == GameState.IN_COMBAT:
+					self.combat_engine.start_turn(heroes=self.heroes,
+												enemies=self.movement_engine.current_encounter.enemies)
+					self.combat_engine.tick(self.heroes)
 			elif self.combat_engine.state == CombatPhase.END_OF_COMBAT:
 				self.state = GameState.IDLE
 				self.check_for_dead()
