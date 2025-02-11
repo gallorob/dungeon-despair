@@ -33,7 +33,7 @@ from ui_components.encounter_preview import EncounterPreview
 from ui_components.events_history import EventsHistory
 from ui_components.gameover_window import GameOver
 from ui_components.level_preview import LevelPreview
-from utils import get_entities_differences, set_ingame_properties
+from utils import get_entities_differences, reset_entity, set_ingame_properties
 
 # TODO: Sleep/have some delay between heroes actions, maybe configurable?
 
@@ -102,7 +102,7 @@ game_over_window = GameOver(rect=pygame.Rect(configs.ui.screen_width / 4, config
 game_over_window.hide()
 
 # Set players
-heroes_player = HumanPlayer()
+heroes_player = AIPlayer()
 enemies_player = HumanPlayer()
 
 # Create game engine
@@ -345,18 +345,31 @@ while running:
 			elif game_engine.state == GameState.WAVE_OVER:
 				game_engine.wave += 1
 				stress_system.score += stress_system.stress
-				diff_entities = get_entities_differences(ref_level=level_copy, curr_level=game_engine.scenario)
+				diff_entities, locations = get_entities_differences(ref_level=level_copy, curr_level=game_engine.scenario)
 				sum_costs = int(sum([x.cost for x in diff_entities]))
 				msg_system.add_msg(f'Current stress: {stress_system.stress}; total level regeneration will cost {sum_costs} stress points.')
+				
+				if len(diff_entities) > 0:
+					if stress_system.stress < min([x.cost for x in diff_entities]):
+						msg_system.add_msg(f'Not enough stress points! The dungeon will remain as is...')
+						old_level = copy.deepcopy(game_engine.scenario)
+					elif stress_system.stress > sum([x.cost for x in diff_entities]):
+						msg_system.add_msg(f'The dungeon has been fully regenerated!')
+						old_level = copy.deepcopy(level_copy)
+						stress_system.stress -= sum_costs
+					else:
+						for entity, location in zip(diff_entities, locations):
+							if entity.cost < stress_system.stress:
+								reset_entity(ref_level=level_copy, curr_level=game_engine.scenario, entity=entity, location=location)
+								stress_system.stress -= entity.cost
+						old_level = copy.deepcopy(game_engine.scenario)
+						msg_system.add_msg(f'The dungeon has been partially regenerated...')
+				else:
+					msg_system.add_msg(f'The dungeon lives on!')
 				# At the end of a wave, the level is restored based on how much stress the player accumulated
 				# Then, more heroes are sent to the dungeon
 				# TODO: This is temporary, players should choose where to spend their stress to restore parts of the dungeon
-				if stress_system.stress > sum_costs:
-					old_level = copy.deepcopy(level_copy)
-					stress_system.stress -= sum_costs
-				else:
-					msg_system.add_msg(f'Not enough stress points! The dungeon will remain as is...')
-					old_level = copy.deepcopy(game_engine.scenario)
+				msg_system.add_msg(f'<b>## Starting a new wave...</b>')
 				heroes = generate_new_party(wave_n=game_engine.wave)
 				set_ingame_properties(game_data=old_level,
 				                      heroes=heroes)
