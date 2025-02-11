@@ -229,6 +229,7 @@ class GameEngine:
 		for corridor in self.scenario.corridors.values():
 			for encounter in corridor.encounters:
 				n_enemies_left += len(encounter.enemies)
-		if n_enemies_left == 0 and stress_system.stress <= 0:
+		if n_enemies_left == 0:
 			self.state = GameState.GAME_OVER
-			msg_system.add_msg(f'<b>Game over</b>: not enough stress to rebuild the dungeon!')
+			stress_system.score += stress_system.stress
+			msg_system.add_msg(f'<b>Game over</b>: dungeon has been cleared!')

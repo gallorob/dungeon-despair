@@ -25,7 +25,8 @@ class EncounterPreview(UIWindow):
 		super().__init__(rect, ui_manager, window_display_title='Encounter', resizable=False, draggable=False)
 		self.padding = self.get_container().rect.width / 10
 		
-		self.stress_level: Optional[UILabel] = None
+		self.stats_level: Optional[UILabel] = None
+		# TODO: Add wave number indicator here
 		self.background_image: Optional[UIImage] = None
 		self.enemies: List[UIImage] = []
 		self.traps: List[UIImage] = []
@@ -36,25 +37,25 @@ class EncounterPreview(UIWindow):
 		self.moving_to: UIImage = None
 		self.modifiers: List[UIImage] = []
 	
-	def display_stress_level(self, stress: int):
-		if self.stress_level is None:
-			self.stress_level = UILabel(
+	def display_stats_level(self, stress: int, wave: int):
+		if self.stats_level is None:
+			self.stats_level = UILabel(
 				relative_rect=Rect(self.get_container().rect.width / 2 - self.get_container().rect.width / 8, 0,
 				                   self.get_container().rect.width / 4, self.get_container().rect.height / 8),
-				text=f'Current Stress: {stress}',
+				text=f'Current Stress: {stress} | Wave #{wave + 1}',
 				container=self.get_container(),
 				manager=self.ui_manager)
 		else:
-			self.stress_level.text = f'Current Stress: {stress}'
-			self.stress_level.rebuild()
+			self.stats_level.text = f'Current Stress: {stress} | Wave #{wave + 1}'
+			self.stats_level.rebuild()
 	
 	def display_corridor_background(self, corridor: Corridor, idx: int):
 		if self.background_image:
 			self.background_image.kill()
-		if self.stress_level:
-			self.stress_level.kill()
+		if self.stats_level:
+			self.stats_level.kill()
 		self.background_image = None
-		self.stress_level = None
+		self.stats_level = None
 		
 		before_image = pygame.image.load(os.path.join(configs.assets.dungeon_dir, corridor.sprites[idx]))
 		area_image = pygame.image.load(os.path.join(configs.assets.dungeon_dir, corridor.sprites[idx + 1]))
@@ -93,10 +94,10 @@ class EncounterPreview(UIWindow):
 	def display_room_background(self, room: Room):
 		if self.background_image:
 			self.background_image.kill()
-		if self.stress_level:
-			self.stress_level.kill()
+		if self.stats_level:
+			self.stats_level.kill()
 		self.background_image = None
-		self.stress_level = None
+		self.stats_level = None
 		area_image = pygame.image.load(os.path.join(configs.assets.dungeon_dir, room.sprite))
 		scale_factor = min(self.get_container().rect.width / area_image.get_width(),
 		                   self.get_container().rect.height / area_image.get_height())

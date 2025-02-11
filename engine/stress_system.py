@@ -10,6 +10,7 @@ from dungeon_despair.domain.utils import ModifierType
 class StressSystem:
 	def __init__(self):
 		self.stress = 0
+		self.score = 0
 	
 	def get_stress_resist(self, hero: Hero) -> float:
 		resist = hero.stress_resist

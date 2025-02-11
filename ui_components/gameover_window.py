@@ -32,7 +32,7 @@ class GameOver(UIWindow):
 		self.score_str = UILabel(
 			relative_rect=Rect(self.get_container().rect.width / 2 - self.get_container().rect.width / 8, 0,
 			                   self.get_container().rect.width / 4, self.get_container().rect.height / 8),
-			text=f'Your Score: {stress_system.stress}',
+			text=f'Your Score: {stress_system.score}',
 			container=self.get_container(),
 			manager=self.ui_manager)
 		self.show()

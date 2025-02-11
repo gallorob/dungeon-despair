@@ -25,6 +25,11 @@ class HeroParty:
 		return s
 
 
+def generate_new_party(wave_n: int) -> HeroParty:
+	# TODO: Should generate a new party with increasing difficulty based on wave number
+	return get_temp_heroes()
+
+
 def get_temp_heroes():
 	heroes = HeroParty()
 	heroes.party = [
