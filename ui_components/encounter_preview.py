@@ -26,7 +26,6 @@ class EncounterPreview(UIWindow):
 		self.padding = self.get_container().rect.width / 10
 		
 		self.stats_level: Optional[UILabel] = None
-		# TODO: Add wave number indicator here
 		self.background_image: Optional[UIImage] = None
 		self.enemies: List[UIImage] = []
 		self.traps: List[UIImage] = []

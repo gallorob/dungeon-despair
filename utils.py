@@ -110,19 +110,19 @@ def get_entities_differences(ref_level: Level, curr_level: Level) -> Union[List[
 			curr_enemies = [f'{x.name}__{x.hp}' for x in curr_level.corridors[corridor_name].encounters[i].enemies]
 			for j, ref_enemy in enumerate(ref_enemies):
 				if ref_enemy not in curr_enemies:
-					diff_entities.append(ref_level.rooms[corridor_name].encounter.enemies[j])
+					diff_entities.append(ref_level.corridors[corridor_name].encounters[i].enemies[j])
 					locations.append(corridor_name)
 			ref_traps = [f'{x.name}' for x in encounter.traps]
 			curr_traps = [f'{x.name}' for x in curr_level.corridors[corridor_name].encounters[i].traps]
 			for j, ref_trap in enumerate(ref_traps):
 				if ref_trap not in curr_traps:
-					diff_entities.append(ref_level.corridors[corridor_name].encounter.traps[j])
+					diff_entities.append(ref_level.corridors[corridor_name].encounters[i].traps[j])
 					locations.append(corridor_name)
 			ref_treasures = [f'{x.name}' for x in encounter.treasures]
 			curr_treasures = [f'{x.name}' for x in curr_level.corridors[corridor_name].encounters[i].treasures]
 			for j, ref_treasure in enumerate(ref_treasures):
 				if ref_treasure not in curr_treasures:
-					diff_entities.append(ref_level.corridors[corridor_name].encounter.treasures[j])
+					diff_entities.append(ref_level.corridors[corridor_name].encounters[i].treasures[j])
 					locations.append(corridor_name)
 	return diff_entities, locations
 
