@@ -1,8 +1,9 @@
-from typing import List, Optional, Union
+from typing import List, Optional, Tuple, Union
 from dungeon_despair.domain.encounter import Encounter
 import pygame
 from PIL import Image
 from pygame import Surface
+from enum import Enum, auto
 
 from dungeon_despair.domain.attack import Attack
 from dungeon_despair.domain.corridor import Corridor
@@ -87,7 +88,7 @@ def set_ingame_properties(game_data: Level, heroes: HeroParty) -> None:
 				treasure.cost = int(treasure.dmg * treasure.trapped_chance)
 
 
-def get_entities_differences(ref_level: Level, curr_level: Level) -> Union[List[Entity], List[str]]:
+def get_entities_differences(ref_level: Level, curr_level: Level) -> Tuple[List[Entity], List[str]]:
 	# Get a list of all entities that are NOT present in curr_level but are in ref_level
 	diff_entities = []
 	locations = []

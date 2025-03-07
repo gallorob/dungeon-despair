@@ -22,6 +22,8 @@ class GameState(Enum):
 	INSPECTING_TRAP: int = auto()
 	INSPECTING_TREASURE: int = auto()
 	WAVE_OVER: int = auto()
+	REGENERATING: int = auto()
+	NEXT_WAVE: int = auto()
 	GAME_OVER: int = auto()
 
 

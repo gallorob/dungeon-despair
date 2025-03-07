@@ -150,6 +150,7 @@ class AppState(Enum):
 	IN_MAIN_MENU = auto()
 	IN_LOADING_SCENARIO = auto()
 	IN_GAME = auto()
+	PICKING_REGEN = ()
 appstate = AppState.IN_LOADING_SCENARIO
 
 def event_in_ui_element(event: EventType,
@@ -193,7 +194,7 @@ def update_ui_elements():
 level_copy: Optional[Level] = None
 
 while running:
-	time_delta = clock.tick(60) / 1000.0
+	time_delta = clock.tick(200) / 1000.0
 	
 	for event in pygame.event.get():
 		ui_manager.process_events(event)
@@ -345,44 +346,35 @@ while running:
 			elif game_engine.state == GameState.WAVE_OVER:
 				game_engine.wave += 1
 				stress_system.score += stress_system.stress
-				# diff_entities, locations = get_entities_differences(ref_level=level_copy, curr_level=game_engine.scenario)
-				# sum_costs = int(sum([x.cost for x in diff_entities]))
-				# msg_system.add_msg(f'Current stress: {stress_system.stress}; total level regeneration will cost {sum_costs} stress points.')
+				diff_entities, locations = get_entities_differences(ref_level=level_copy, curr_level=game_engine.scenario)
+				if len(diff_entities) > 0:
+					if stress_system.stress < min([x.cost for x in diff_entities]):
+						msg_system.add_msg(f'Not enough stress points! The dungeon will remain as is...')
+						game_engine.move_to(Destination(to=level_copy.current_room,
+									  					idx=-1))
+						game_engine.state = GameState.NEXT_WAVE
+					else:
+						regen_picker = RegenPicker(rect=pygame.Rect(configs.ui.screen_width / 4, configs.ui.screen_height / 4,
+																	configs.ui.screen_width / 2, configs.ui.screen_height / 2),
+												ui_manager=ui_manager,
+												level_copy=level_copy,
+												game_engine=game_engine)
+						regen_picker.show()
+						game_engine.state = GameState.REGENERATING
+				else:
+					msg_system.add_msg(f'The dungeon lives on!')
+					game_engine.move_to(Destination(to=level_copy.current_room,
+									 				idx=-1))
+					game_engine.state = GameState.NEXT_WAVE
 				
-				regen_picker = RegenPicker(rect=pygame.Rect(configs.ui.screen_width / 4, configs.ui.screen_height / 4,
-				                                           configs.ui.screen_width / 2, configs.ui.screen_height / 2),
-											ui_manager=ui_manager,
-											level_copy=level_copy,
-											game_engine=game_engine)
-				regen_picker.show()
-				old_level = copy.deepcopy(level_copy)
-				# if len(diff_entities) > 0:
-				# 	if stress_system.stress < min([x.cost for x in diff_entities]):
-				# 		msg_system.add_msg(f'Not enough stress points! The dungeon will remain as is...')
-				# 		old_level = copy.deepcopy(game_engine.scenario)
-				# 	elif stress_system.stress > sum([x.cost for x in diff_entities]):
-				# 		msg_system.add_msg(f'The dungeon has been fully regenerated!')
-				# 		old_level = copy.deepcopy(level_copy)
-				# 		stress_system.stress -= sum_costs
-				# 	else:
-				# 		for entity, location in zip(diff_entities, locations):
-				# 			if entity.cost < stress_system.stress:
-				# 				reset_entity(ref_level=level_copy, curr_level=game_engine.scenario, entity=entity, location=location)
-				# 				stress_system.stress -= entity.cost
-				# 		old_level = copy.deepcopy(game_engine.scenario)
-				# 		msg_system.add_msg(f'The dungeon has been partially regenerated...')
-				# else:
-				# 	old_level = copy.deepcopy(level_copy)
-				# 	msg_system.add_msg(f'The dungeon lives on!')
-				# At the end of a wave, the level is restored based on how much stress the player accumulated
-				# Then, more heroes are sent to the dungeon
-				# TODO: This is temporary, players should choose where to spend their stress to restore parts of the dungeon
+			elif game_engine.state == GameState.NEXT_WAVE:
 				msg_system.add_msg(f'<b>## Starting a new wave...</b>')
 				heroes = generate_new_party(wave_n=game_engine.wave)
-				set_ingame_properties(game_data=old_level,
+				set_ingame_properties(game_data=game_engine.scenario,
 				                      heroes=heroes)
 				game_engine.heroes = heroes
-				game_engine.set_level(old_level)
+				# game_engine.set_level(game_engine.scenario)
+				game_engine.state = GameState.IDLE
 				game_engine.tick()
 				appstate = AppState.IN_GAME
 				# reinizialize UI elements
@@ -406,7 +398,5 @@ while running:
 	
 	ui_manager.draw_ui(screen)
 	pygame.display.update()
-
-pygame.quit()
 
 pygame.quit()
