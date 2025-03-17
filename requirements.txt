@@ -1,4 +1,3 @@
-pygame
 pygame_gui
 pyyaml
 pydantic
@@ -6,3 +5,12 @@ pillow
 fire
 ollama
 numpy
+diffusers
+compel
+xformers
+rembg
+peft
+onnxruntime
+outlines
+sentencepiece
+datasets

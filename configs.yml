@@ -40,3 +40,23 @@ game:
     passing: 10
     switch_position: 10
   sim_depth: 5
+
+gen:
+  llm_model: 'qwen2.5:latest'
+  llm_sysprompt: 'Heroes difficulty determins the strength of their attacks and their HP. A more difficult hero has stronger attacks and higher HP. Be creative with the names. Make an hero if there is no current one. Make attacks using the provided function.'
+  llm_usrmsg: 'I want the current {difficult} hero to have {n_attacks} differnt and unique attacks.'
+  temperature: 0.6
+  top_p: 0.2
+  top_k: 10
+  sd_model: './assets/models/aZovyaRPGArtistTools_v4.safetensors'
+  sd_lora: 'NecroSketcherAlpha.safetensors'
+  disable_progress_bar: true
+  cache_dir: './assets/models'
+  img_height: 768
+  img_width: 512
+  inference_steps: 30
+  guidance_scale: 7.5
+  eta: 1.0
+  lora_scale: 0.75
+  sd_prompt: 'zrpgstyle, darkest dungeon, (full body)+++ {entity_name}: ({entity_description})++,masterpiece++, highly detailed+, (flat empty background)+++'
+  sd_neg_prompt: '(close-up)+++, out of shot, (multiple characters)++, (many characters)++, not centered, floor, walls, pedestal, duplication, repetition, bad anatomy, monochromatic, disfigured, badly drawn, bad hands, naked, nude'

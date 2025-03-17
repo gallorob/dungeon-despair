@@ -180,7 +180,7 @@ class EncounterPreview(UIWindow):
 		min_width = (x_offset - self.padding) / 4
 		cum_padding = self.padding
 		for i, hero in enumerate(heroes.party):
-			hero_image = pygame.image.load(hero.sprite)
+			hero_image = pygame.image.load(os.path.join(configs.assets.dungeon_dir, hero.sprite))
 			r = min_width / hero_image.get_width()
 			hero_sprite = UIImage(
 				relative_rect=Rect(

@@ -6,3 +6,4 @@ dungeon-despair-domain
 *.json
 my_scenarios
 update_existing_scenario.py
+assets/models
