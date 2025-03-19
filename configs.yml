@@ -40,11 +40,13 @@ game:
     passing: 10
     switch_position: 10
   sim_depth: 5
+  diff_cycle: 5
+  difficulties: ['very easy', 'easy', 'medium', 'hard', 'very hard']
 
 gen:
   llm_model: 'qwen2.5:latest'
-  llm_sysprompt: 'Heroes difficulty determins the strength of their attacks and their HP. A more difficult hero has stronger attacks and higher HP. Be creative with the names. Make an hero if there is no current one. Make attacks using the provided function.'
-  llm_usrmsg: 'I want the current {difficult} hero to have {n_attacks} differnt and unique attacks.'
+  llm_sysprompt: 'assets/llm_prompts/herogen_prompt'
+  llm_usrmsg: 'I want the current {difficult} hero to have {n_attacks} different and unique attacks. Take the initiative and just make content.'
   temperature: 0.6
   top_p: 0.2
   top_k: 10

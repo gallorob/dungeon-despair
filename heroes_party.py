@@ -1,5 +1,6 @@
 import json
 import os
+import random
 from typing import List, Optional, Tuple
 from dungeon_despair.domain.attack import Attack
 from dungeon_despair.domain.entities.hero import Hero
@@ -176,34 +177,37 @@ def generate_hero(n_attacks: int,
 		'temperature': configs.gen.temperature,
 		# 'top_p': configs.gen.top_p,
 		# 'top_k': configs.gen.top_k,
-		'seed': configs.rng_seed,
+		# 'seed': configs.rng_seed,
 		# 'num_ctx': 32768 * 3
 	}
 	formatted_usrmsg = configs.gen.llm_usrmsg.format(n_attacks=n_attacks,
 												  	 difficult=difficulty)
 	hero = None
 	while hero is None or len(hero.attacks) != n_attacks:
-		# print('New session...')
+		print('New session...')
+		with open(configs.gen.llm_sysprompt, 'r') as f:
+			sysprompt = f.read()
 		if hero:
-			curr_msg = f'Current hero: {hero.model_dump_json()}'
+			sysprompt = sysprompt.replace('$current_hero$', hero.model_dump_json())
 		else:
-			curr_msg = 'There is no current hero.'
+			sysprompt = sysprompt.replace('$current_hero$', 'There is no current hero.')
 		messages = [
-			{'role': 'system', 'content': configs.gen.llm_sysprompt + f'\n{curr_msg}'},
+			{'role': 'system', 'content': sysprompt},
 			{'role': 'user', 'content': formatted_usrmsg},
 		]
+		print(f'{messages=}')
 		res = ollama.chat(model=configs.gen.llm_model,
 		                  messages=messages,
 		                  tools=tool_lib.get_tool_schema(),
 		                  options=options)
-		# print(f'{res=}')
+		print(f'{res=}')
 		if res['message'].get('tool_calls'):
 			for tool in res['message']['tool_calls']:
 				func_name = tool['function']['name']
 				func_args = tool['function']['arguments']
 				output = tool_lib.try_call_func(func_name=func_name,
 												func_args=func_args)
-				# print(f'{output=}')
+				print(f'{output=}')
 				if isinstance(output, Hero):
 					hero = output
 				elif isinstance(output, Attack):
@@ -212,8 +216,9 @@ def generate_hero(n_attacks: int,
 				else:
 					messages.append({'role': 'tool', 'content': output})
 		
-		# print('###')
+		print('###')
 
+	print('Generating sprite...')
 	hero.sprite = generate_sprite(name=hero.name, description=hero.description)
 
 	return hero
@@ -241,12 +246,22 @@ class HeroParty:
 		return s
 
 
+def scale_difficulty(wave_n: int) -> Tuple[int, int, str]:
+	# Difficulty increaseas every cycle, number of heroes increases within cycle with small variations, number of attacks is random 1-4
+	difficulty = min(wave_n // configs.game.diff_cycle, len(configs.game.difficulties))
+	local_wave = wave_n % configs.game.diff_cycle
+	base_hero_count = 1 + (local_wave * ddd_config.max_enemies_per_encounter) // configs.game.diff_cycle
+	num_heroes = min(base_hero_count + random.choice([0, 1]), ddd_config.max_enemies_per_encounter)
+	n_attacks = random.choice(range(4)) + 1
+	return num_heroes, n_attacks, configs.game.difficulties[difficulty]
+
+
 def generate_new_party(wave_n: int) -> HeroParty:
-	# TODO: Should generate a new party with increasing difficulty based on wave number
 	party = HeroParty()
-	for i in range(wave_n + 1):
-		print(f"Generating hero {i + 1} / {wave_n + 1} (n_attacks=2, difficulty='easy')...")
-		hero = generate_hero(n_attacks=2, difficulty='easy')
+	num_heroes, n_attacks, difficulty = scale_difficulty(wave_n=wave_n) 
+	for i in range(num_heroes):
+		print(f"Generating hero {i + 1} / {wave_n + 1} ({n_attacks=}, {difficulty=})...")
+		hero = generate_hero(n_attacks=n_attacks, difficulty=difficulty)
 		hero.sprite = generate_sprite(name=hero.name, description=hero.description)
 		party.party.append(hero)
 	return party
@@ -258,7 +273,7 @@ def get_temp_heroes():
 	heroes.party = [
 		Hero(name='Gareth Ironclad',
 		     description='A tall, muscular human fighter with short dark hair, a well-trimmed beard, and piercing blue eyes. He wears polished plate armor with a large sword and a shield with a family crest.',
-		     sprite='assets/gareth ironclad.png',
+		     sprite='assets/base_heroes/gareth ironclad.png',
 		     hp=15.0,
 		     dodge=0.1,
 		     prot=0.8,
@@ -294,7 +309,7 @@ def get_temp_heroes():
 		     ]),
 		Hero(name='Elira Moonwhisper',
 		     description='A small gnome priest with long wavy silver hair, large emerald eyes, and luminescent skin. She wears flowing white and gold robes with intricate patterns and a glowing crystal pendant.',
-		     sprite='assets/elira moonwhisper.png',
+		     sprite='assets/base_heroes/elira moonwhisper.png',
 		     hp=8.0,
 		     dodge=0.2,
 		     prot=0.2,
@@ -339,7 +354,7 @@ def get_temp_heroes():
 		     ]),
 		Hero(name='Aelarion Starfire',
 		     description='A tall, slender elf mage with long platinum blonde hair, violet eyes, and pale skin. He wears a deep blue robe with silver runes, carrying a carved staff and a spellbook.',
-		     sprite='assets/aelarion starfire.png',
+		     sprite='assets/base_heroes/aelarion starfire.png',
 		     hp=10.0,
 		     dodge=0.1,
 		     prot=0.2,
@@ -375,7 +390,7 @@ def get_temp_heroes():
 		     ]),
 		Hero(name='Milo Underfoot',
 		     description='A small, nimble hobbit thief with short curly brown hair, bright hazel eyes, and tanned skin. He dresses in dark colors with many pockets and moves with silent grace.',
-		     sprite='assets/milo underfoot.png',
+		     sprite='assets/base_heroes/milo underfoot.png',
 		     hp=6.0,
 		     dodge=0.9,
 		     prot=0.2,
@@ -415,3 +430,8 @@ def get_temp_heroes():
 		     ]),
 	]
 	return heroes
+
+
+if __name__ == '__main__':
+	p = get_temp_heroes()
+	print(p.party[0].model_dump_json())

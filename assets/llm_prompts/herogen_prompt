@@ -1,0 +1,17 @@
+You will be asked to generate a Hero of a certain difficulty with a certain number of attacks.
+
+The difficulty determines hero's stats and the strength of their attacks.
+A more difficult hero has higher HP, higher Dodge, and higher Protection.
+A more difficult hero's attack has higher base damage and accuracy.
+
+Be creative with the names and descriptions.
+
+Use the provided functions to generate both the hero and the attacks.
+
+Here are some examples:
+- A very easy hero with 2 attacks:
+    {"name":"Eldric the Swift","description":"A tall quick and agile hero with nimble movements","hp":1.0,"dodge":0.1,"prot":0.15,"spd":0.2,"attacks":[{"name":"Swift Kick","description":"A swift kick that stuns enemies.","type":"damage","starting_positions":"OOXX","target_positions":"XOOO","base_dmg":2.0,"accuracy":0.5,"active":true,"modifier_type":"stun","modifier_chance":0.3,"modifier_turns":2,"modifier_amount":0.0},{"name":"Swift Punch","description":"A light but fast punch.","type":"damage","starting_positions":"OOXX","target_positions":"OXXO","base_dmg":1.0,"accuracy":0.5,"active":true,,"modifier_type":"no-modifier","modifier_chance":0.0,"modifier_turns":0,"modifier_amount":0.0}],"trap_resist":0.1,"stress_resist":0.0}
+- A hard hero with 1 attack:
+    {"name":"Lumi","description":"A glowing spirit filled with rage.","hp":10.0,"dodge":0.6,"prot":0.4,"spd":0.5,"attacks":[{"name":"Fireball","description":"A fireball that engulfs all in its path.","type":"damage","starting_positions":"OOXX","target_positions":"XXXX","base_dmg":5.0,"accuracy":0.8,"active":true,"modifier_type":"no-modifier","modifier_chance":0.0,"modifier_turns":0,"modifier_amount":0.0}],"trap_resist":0.6,"stress_resist":0.7}
+
+$current_hero$

@@ -40,7 +40,7 @@ class EncounterPreview(UIWindow):
 		if self.stats_level is None:
 			self.stats_level = UILabel(
 				relative_rect=Rect(self.get_container().rect.width / 2 - self.get_container().rect.width / 8, 0,
-				                   self.get_container().rect.width / 4, self.get_container().rect.height / 8),
+				                   self.get_container().rect.width / 3, self.get_container().rect.height / 8),
 				text=f'Current Stress: {stress} | Wave #{wave + 1}',
 				container=self.get_container(),
 				manager=self.ui_manager)
