@@ -48,6 +48,10 @@ def generate_sprite(name: str,
 	import rembg
 	import torch as th
 
+	global device
+	global stablediff
+	global compel_stablediff
+
 	formatted_prompt = configs.gen.sd_prompt.format(entity_name=name,
 												 	entity_description=description)
 	conditioning = compel_stablediff.build_conditioning_tensor(formatted_prompt)
@@ -181,7 +185,8 @@ def get_heromakingtools():
 
 def generate_hero(n_attacks: int,
 				  difficulty: str) -> Hero:
-	import ollama
+	import requests
+	import json
 
 	tool_lib = get_heromakingtools()
 
@@ -208,11 +213,14 @@ def generate_hero(n_attacks: int,
 			{'role': 'user', 'content': formatted_usrmsg},
 		]
 		print(f'{messages=}')
-		res = ollama.chat(model=configs.gen.llm_model,
-		                  messages=messages,
-		                  tools=tool_lib.get_tool_schema(),
-		                  options=options,
-						  stream=False)
+		res = json.loads(requests.post(url='http://localhost:11434/api/chat',
+								 json={
+									 'model': configs.gen.llm_model,
+									 'messages': messages,
+									 'stream': False,
+									 'options': options,
+									 'tools': tool_lib.get_tool_schema()
+								 }).text)
 		print(f'{res=}')
 		if res['message'].get('tool_calls'):
 			for tool in res['message']['tool_calls']:

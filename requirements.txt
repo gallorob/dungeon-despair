@@ -1,13 +1,11 @@
 pygame_gui
 pyyaml
 pydantic
-pillow
+pillow<=11.1
 fire
-ollama
 numpy
 diffusers
 compel
-xformers
 rembg
 peft
 onnxruntime
