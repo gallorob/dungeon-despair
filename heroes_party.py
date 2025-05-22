@@ -7,42 +7,47 @@ from dungeon_despair.domain.entities.hero import Hero
 from dungeon_despair.domain.modifier import Modifier
 from dungeon_despair.domain.utils import ActionType, ModifierType, get_enum_by_value
 from pydantic import ValidationError
-import torch as th
-from diffusers import StableDiffusionPipeline, UniPCMultistepScheduler
-import rembg
-from compel import Compel
-from transformers import AutoTokenizer
-import ollama
-from gptfunctionutil import AILibFunction, GPTFunctionLibrary, LibParam, LibParamSpec
 
 from configs import configs
 from dungeon_despair.domain.configs import config as ddd_config
 
+device: Optional[str] = None
+stablediff = None
+compel_stablediff = None
 
-device = 'cuda' if th.cuda.is_available() else 'cpu'
 
+def load_diffusion_models():
+	import torch as th
+	from diffusers import StableDiffusionPipeline, UniPCMultistepScheduler
+	from compel import Compel
+	
+	global device, stablediff, compel_stablediff
+	device = 'cuda' if th.cuda.is_available() else 'cpu'
 
-stablediff = StableDiffusionPipeline.from_single_file(
-	configs.gen.sd_model,
-	torch_dtype=th.float16,
-	cache_dir=configs.gen.cache_dir,
-	safety_checker=None).to(device)
-stablediff.safety_checker = None
-stablediff.scheduler = UniPCMultistepScheduler.from_config(stablediff.scheduler.config,
-														   use_karras=True,
-														   algorithm_type='sde-dpmsolver++')
-stablediff.set_progress_bar_config(disable=configs.gen.disable_progress_bar)
-stablediff.load_lora_weights(configs.gen.cache_dir, weight_name=configs.gen.sd_lora)
-stablediff.enable_model_cpu_offload()
-stablediff.enable_attention_slicing()
-# stablediff.enable_xformers_memory_efficient_attention()
-compel_stablediff = Compel(tokenizer=stablediff.tokenizer,
-						   text_encoder=stablediff.text_encoder,
-						   truncate_long_prompts=False)
+	stablediff = StableDiffusionPipeline.from_single_file(
+		configs.gen.sd_model,
+		torch_dtype=th.float16,
+		cache_dir=configs.gen.cache_dir,
+		safety_checker=None).to(device)
+	stablediff.safety_checker = None
+	stablediff.scheduler = UniPCMultistepScheduler.from_config(stablediff.scheduler.config,
+															use_karras=True,
+															algorithm_type='sde-dpmsolver++')
+	stablediff.set_progress_bar_config(disable=configs.gen.disable_progress_bar)
+	stablediff.load_lora_weights(configs.gen.cache_dir, weight_name=configs.gen.sd_lora)
+	stablediff.enable_model_cpu_offload()
+	stablediff.enable_attention_slicing()
+	# stablediff.enable_xformers_memory_efficient_attention()
+	compel_stablediff = Compel(tokenizer=stablediff.tokenizer,
+							text_encoder=stablediff.text_encoder,
+							truncate_long_prompts=False)
 
 
 def generate_sprite(name: str,
 					description: str) -> str:
+	import rembg
+	import torch as th
+
 	formatted_prompt = configs.gen.sd_prompt.format(entity_name=name,
 												 	entity_description=description)
 	conditioning = compel_stablediff.build_conditioning_tensor(formatted_prompt)
@@ -60,125 +65,132 @@ def generate_sprite(name: str,
 	return os.path.basename(fname)
 
 
-class HeroMakingTools(GPTFunctionLibrary):
-	def try_call_func(self,
-	                  func_name: str,
-	                  func_args: str) -> str:
-		if isinstance(func_args, str):
-			func_args = json.loads(func_args)
-		try:
-			operation_result = self.call_by_dict({
-				'name': func_name,
-				'arguments': {
-					**func_args
-				}
-			})
-			return operation_result
-		except AssertionError as e:
-			return f'Domain validation error: {e}'
-		except AttributeError as e:
-			return f'Function {func_name} not found.'
-		except TypeError as e:
-			return f'Missing arguments: {e}'
-	
-	@AILibFunction(name='make_hero', description='Create a hero.',
-	               required=['name', 'description', 'hp', 'dodge', 'prot', 'spd', 'trap_resist', 'stress_resist', 'attacks'])
-	@LibParamSpec(name='name', description='The unique name of the hero')
-	@LibParamSpec(name='description', description='The physical description of the hero')
-	@LibParamSpec(name='hp', description=f'The health points of the hero, must be a value must be between {ddd_config.min_hp} and {ddd_config.max_hp}.')
-	@LibParamSpec(name='dodge', description=f'The dodge points of the hero, must be a value must be between {ddd_config.min_dodge} and {ddd_config.max_dodge}.')
-	@LibParamSpec(name='prot', description=f'The protection points of the hero, must be a value must be between {ddd_config.min_prot} and {ddd_config.max_prot}.')
-	@LibParamSpec(name='spd', description=f'The speed points of the hero, must be a value must be between {ddd_config.min_spd} and {ddd_config.max_spd}.')
-	@LibParamSpec(name='trap_resist', description=f'The chance this hero will not trigger traps, must be a value must be between 0.0 and 1.0.')
-	@LibParamSpec(name='stress_resist', description=f'The percentage resistance of the hero to stress, must be a value must be between 0.0 and 1.0.')
-	def make_hero(self, 
-	              name: str,
-	              description: str,
-	              hp: float,
-	              dodge: float,
-	              prot: float,
-	              spd: float,
-				  trap_resist: float,
-				  stress_resist: float) -> Hero:
-		assert name != '', 'Hero name should be provided.'
-		assert description != '', 'Hero description should be provided.'
-		assert ddd_config.min_hp <= hp <= ddd_config.max_hp, f'Invalid hp value: {hp}; should be between {ddd_config.min_hp} and {ddd_config.max_hp}.'
-		assert ddd_config.min_dodge <= dodge <= ddd_config.max_dodge, f'Invalid dodge value: {dodge}; should be between {ddd_config.min_dodge} and {ddd_config.max_dodge}.'
-		assert ddd_config.min_prot <= prot <= ddd_config.max_prot, f'Invalid prot value: {prot}; should be between {ddd_config.min_prot} and {ddd_config.max_prot}.'
-		assert ddd_config.min_spd <= spd <= ddd_config.max_spd, f'Invalid spd value: {spd}; should be between {ddd_config.min_spd} and {ddd_config.max_spd}.'
-		assert 0.0 <= trap_resist <= 1.0, f'Invalid trap_resist value: {trap_resist}; should be between 0.0 and 1.0.'
-		assert 0.0 <= stress_resist <= 1.0, f'Invalid trastress_resistp_resist value: {stress_resist}; should be between 0.0 and 1.0.'
-		hero = Hero(name=name, description=description, hp=hp, dodge=dodge, prot=prot, spd=spd, trap_resist=trap_resist, stress_resist=stress_resist, max_hp=hp)
-		return hero
+def get_heromakingtools():
+	from gptfunctionutil import AILibFunction, GPTFunctionLibrary, LibParam, LibParamSpec
 
-	@AILibFunction(name='add_attack', description='Add an attack to a hero.',
-	               required=['name', 'description', 'starting_positions', 'target_positions', 'base_dmg', 'modifier_type', 'modifier_chance', 'modifier_turns', 'modifier_amount'])
-	@LibParam(name='The unique name of the attack.')
-	@LibParam(description='The description of the attack.')
-	@LibParam(attack_type='The attack type: must be one of "damage" or "heal".')
-	@LibParam(starting_positions='A string of 4 characters describing the positions from which the attack can be executed. Use "X" where the attack can be executed from, and "O" otherwise.')
-	@LibParam(target_positions='A string of 4 characters describing the positions that the attack strikes to. Use "X" where the attack strikes to, and "O" otherwise.')
-	@LibParam(base_dmg=f'The base damage of the attack. Must be between {ddd_config.min_base_dmg} and {ddd_config.max_base_dmg}.')
-	@LibParam(accuracy='The attack accuracy (a percentage between 0.0 and 1.0).')
-	@LibParam(modifier_type=f'The type of modifier this attack applies when triggered. Set to "no-modifier" if no modifier should be applied, else set it to one of {", ".join([x.value for x in ModifierType])}.')
-	@LibParam(modifier_chance='The chance that the modifier is applied to a target (between 0.0 and 1.0)')
-	@LibParam(modifier_turns='The number of turns the modifier is active for')
-	@LibParam(modifier_amount=f'The amount the modifier applies. If the modifier is "bleed" or "heal", the value must be between {ddd_config.min_base_dmg} and {ddd_config.max_base_dmg}, otherwise it must be between 0.0 and 1.0.')
-	def add_attack(self, 
-	               name: str,
-	               description: str,
-	               attack_type: str,
-	               starting_positions: str,
-	               target_positions: str,
-	               base_dmg: float,
-	               accuracy: float,
-				   modifier_type: str,
-				   modifier_chance: float,
-				   modifier_turns: float,
-				   modifier_amount: float) -> Attack:
-		assert name != '', f'Attack name should be specified.'
-		assert description != '', f'Attack description should be specified.'
-		assert modifier_type != '', 'Attack modifier type should be provided.'
-		assert modifier_chance is not None, 'Attack modifier chance should be provided.'
-		assert modifier_turns is not None, 'Attack modifier turns should be provided.'
-		assert modifier_amount is not None, 'Attack modifier amount should be provided.'
-		type_enum = get_enum_by_value(ActionType, attack_type)
-		assert type_enum is not None, f'Attack type "{attack_type}" is not a valid type: it must be one of {", ".join([t.value for t in ActionType])}.'
-		if type_enum == ActionType.DAMAGE:
-			assert ddd_config.min_base_dmg <= base_dmg <= ddd_config.max_base_dmg, f'Invalid base_dmg value: {base_dmg}; should be between {ddd_config.min_base_dmg} and {ddd_config.max_base_dmg}.'
-		else:  # type is HEAL
-			assert -ddd_config.max_base_dmg <= base_dmg <= -ddd_config.min_base_dmg, f'Invalid base_dmg value: {base_dmg}; should be between {-ddd_config.max_base_dmg} and {-ddd_config.min_base_dmg}.'
-		assert 0.0 <= accuracy <= 1.0, f'Invalid accuracy: must be between 0.0 and 1.0'
-		assert len(starting_positions) == 4, f'Invalid starting_positions value: {starting_positions}. Must be 4 characters long.'
-		assert len(target_positions) == 4, f'Invalid target_positions value: {target_positions}. Must be 4 characters long.'
-		assert set(starting_positions).issubset({'X', 'O'}), f'Invalid starting_positions value: {starting_positions}. Must contain only "X" and "O" characters.'
-		assert set(target_positions).issubset({'X', 'O'}), f'Invalid target_positions value: {target_positions}. Must contain only "X" and "O" characters.'
-		attack = Attack(name=name, description=description,
-		                type=type_enum,
-		                starting_positions=starting_positions, target_positions=target_positions,
-		                base_dmg=base_dmg, accuracy=accuracy)
-		if modifier_type != 'no-modifier':
-			assert modifier_type in [x.value for x in ModifierType], f'Could not add attack: {modifier_type} is not a valid modifier type.'
-			assert 0.0 <= modifier_chance <= 1.0, f'modifier_chance must be a value between 0.0 and 1.0; you passed {modifier_chance}.'
-			assert modifier_turns >= 0, f'modifier_turns must be a positive value; you passed {modifier_turns}.'
-			if modifier_type in [ModifierType.BLEED.value, ModifierType.HEAL.value]:
-				assert ddd_config.min_base_dmg <= modifier_amount <= ddd_config.max_base_dmg, f'Invalid modifier_amount value: {modifier_amount}; should be between {ddd_config.min_base_dmg} and {ddd_config.max_base_dmg}.'
-			elif modifier_type == ModifierType.SCARE.value:
-				assert 0.0 <= modifier_amount <= 1.0, f'Invalid modifier_amount value: {modifier_amount}; should be between 0.0 and 1.0.'
-			attack.modifier = Modifier(type=modifier_type, chance=modifier_chance, turns=modifier_turns, amount=modifier_amount)
-		return attack
+	class HeroMakingTools(GPTFunctionLibrary):
+		def try_call_func(self,
+						func_name: str,
+						func_args: str) -> str:
+			if isinstance(func_args, str):
+				func_args = json.loads(func_args)
+			try:
+				operation_result = self.call_by_dict({
+					'name': func_name,
+					'arguments': {
+						**func_args
+					}
+				})
+				return operation_result
+			except AssertionError as e:
+				return f'Domain validation error: {e}'
+			except AttributeError as e:
+				return f'Function {func_name} not found.'
+			except TypeError as e:
+				return f'Missing arguments: {e}'
+		
+		@AILibFunction(name='make_hero', description='Create a hero.',
+					required=['name', 'description', 'hp', 'dodge', 'prot', 'spd', 'trap_resist', 'stress_resist', 'attacks'])
+		@LibParamSpec(name='name', description='The unique name of the hero')
+		@LibParamSpec(name='description', description='The physical description of the hero')
+		@LibParamSpec(name='hp', description=f'The health points of the hero, must be a value must be between {ddd_config.min_hp} and {ddd_config.max_hp}.')
+		@LibParamSpec(name='dodge', description=f'The dodge points of the hero, must be a value must be between {ddd_config.min_dodge} and {ddd_config.max_dodge}.')
+		@LibParamSpec(name='prot', description=f'The protection points of the hero, must be a value must be between {ddd_config.min_prot} and {ddd_config.max_prot}.')
+		@LibParamSpec(name='spd', description=f'The speed points of the hero, must be a value must be between {ddd_config.min_spd} and {ddd_config.max_spd}.')
+		@LibParamSpec(name='trap_resist', description=f'The chance this hero will not trigger traps, must be a value must be between 0.0 and 1.0.')
+		@LibParamSpec(name='stress_resist', description=f'The percentage resistance of the hero to stress, must be a value must be between 0.0 and 1.0.')
+		def make_hero(self, 
+					name: str,
+					description: str,
+					hp: float,
+					dodge: float,
+					prot: float,
+					spd: float,
+					trap_resist: float,
+					stress_resist: float) -> Hero:
+			assert name != '', 'Hero name should be provided.'
+			assert description != '', 'Hero description should be provided.'
+			assert ddd_config.min_hp <= hp <= ddd_config.max_hp, f'Invalid hp value: {hp}; should be between {ddd_config.min_hp} and {ddd_config.max_hp}.'
+			assert ddd_config.min_dodge <= dodge <= ddd_config.max_dodge, f'Invalid dodge value: {dodge}; should be between {ddd_config.min_dodge} and {ddd_config.max_dodge}.'
+			assert ddd_config.min_prot <= prot <= ddd_config.max_prot, f'Invalid prot value: {prot}; should be between {ddd_config.min_prot} and {ddd_config.max_prot}.'
+			assert ddd_config.min_spd <= spd <= ddd_config.max_spd, f'Invalid spd value: {spd}; should be between {ddd_config.min_spd} and {ddd_config.max_spd}.'
+			assert 0.0 <= trap_resist <= 1.0, f'Invalid trap_resist value: {trap_resist}; should be between 0.0 and 1.0.'
+			assert 0.0 <= stress_resist <= 1.0, f'Invalid trastress_resistp_resist value: {stress_resist}; should be between 0.0 and 1.0.'
+			hero = Hero(name=name, description=description, hp=hp, dodge=dodge, prot=prot, spd=spd, trap_resist=trap_resist, stress_resist=stress_resist, max_hp=hp)
+			return hero
+
+		@AILibFunction(name='add_attack', description='Add an attack to a hero.',
+					required=['name', 'description', 'starting_positions', 'target_positions', 'base_dmg', 'modifier_type', 'modifier_chance', 'modifier_turns', 'modifier_amount'])
+		@LibParam(name='The unique name of the attack.')
+		@LibParam(description='The description of the attack.')
+		@LibParam(attack_type='The attack type: must be one of "damage" or "heal".')
+		@LibParam(starting_positions='A string of 4 characters describing the positions from which the attack can be executed. Use "X" where the attack can be executed from, and "O" otherwise.')
+		@LibParam(target_positions='A string of 4 characters describing the positions that the attack strikes to. Use "X" where the attack strikes to, and "O" otherwise.')
+		@LibParam(base_dmg=f'The base damage of the attack. Must be between {ddd_config.min_base_dmg} and {ddd_config.max_base_dmg}.')
+		@LibParam(accuracy='The attack accuracy (a percentage between 0.0 and 1.0).')
+		@LibParam(modifier_type=f'The type of modifier this attack applies when triggered. Set to "no-modifier" if no modifier should be applied, else set it to one of {", ".join([x.value for x in ModifierType])}.')
+		@LibParam(modifier_chance='The chance that the modifier is applied to a target (between 0.0 and 1.0)')
+		@LibParam(modifier_turns='The number of turns the modifier is active for')
+		@LibParam(modifier_amount=f'The amount the modifier applies. If the modifier is "bleed" or "heal", the value must be between {ddd_config.min_base_dmg} and {ddd_config.max_base_dmg}, otherwise it must be between 0.0 and 1.0.')
+		def add_attack(self, 
+					name: str,
+					description: str,
+					attack_type: str,
+					starting_positions: str,
+					target_positions: str,
+					base_dmg: float,
+					accuracy: float,
+					modifier_type: str,
+					modifier_chance: float,
+					modifier_turns: float,
+					modifier_amount: float) -> Attack:
+			assert name != '', f'Attack name should be specified.'
+			assert description != '', f'Attack description should be specified.'
+			assert modifier_type != '', 'Attack modifier type should be provided.'
+			assert modifier_chance is not None, 'Attack modifier chance should be provided.'
+			assert modifier_turns is not None, 'Attack modifier turns should be provided.'
+			assert modifier_amount is not None, 'Attack modifier amount should be provided.'
+			type_enum = get_enum_by_value(ActionType, attack_type)
+			assert type_enum is not None, f'Attack type "{attack_type}" is not a valid type: it must be one of {", ".join([t.value for t in ActionType])}.'
+			if type_enum == ActionType.DAMAGE:
+				assert ddd_config.min_base_dmg <= base_dmg <= ddd_config.max_base_dmg, f'Invalid base_dmg value: {base_dmg}; should be between {ddd_config.min_base_dmg} and {ddd_config.max_base_dmg}.'
+			else:  # type is HEAL
+				assert -ddd_config.max_base_dmg <= base_dmg <= -ddd_config.min_base_dmg, f'Invalid base_dmg value: {base_dmg}; should be between {-ddd_config.max_base_dmg} and {-ddd_config.min_base_dmg}.'
+			assert 0.0 <= accuracy <= 1.0, f'Invalid accuracy: must be between 0.0 and 1.0'
+			assert len(starting_positions) == 4, f'Invalid starting_positions value: {starting_positions}. Must be 4 characters long.'
+			assert len(target_positions) == 4, f'Invalid target_positions value: {target_positions}. Must be 4 characters long.'
+			assert set(starting_positions).issubset({'X', 'O'}), f'Invalid starting_positions value: {starting_positions}. Must contain only "X" and "O" characters.'
+			assert set(target_positions).issubset({'X', 'O'}), f'Invalid target_positions value: {target_positions}. Must contain only "X" and "O" characters.'
+			attack = Attack(name=name, description=description,
+							type=type_enum,
+							starting_positions=starting_positions, target_positions=target_positions,
+							base_dmg=base_dmg, accuracy=accuracy)
+			if modifier_type != 'no-modifier':
+				assert modifier_type in [x.value for x in ModifierType], f'Could not add attack: {modifier_type} is not a valid modifier type.'
+				assert 0.0 <= modifier_chance <= 1.0, f'modifier_chance must be a value between 0.0 and 1.0; you passed {modifier_chance}.'
+				assert modifier_turns >= 0, f'modifier_turns must be a positive value; you passed {modifier_turns}.'
+				if modifier_type in [ModifierType.BLEED.value, ModifierType.HEAL.value]:
+					assert ddd_config.min_base_dmg <= modifier_amount <= ddd_config.max_base_dmg, f'Invalid modifier_amount value: {modifier_amount}; should be between {ddd_config.min_base_dmg} and {ddd_config.max_base_dmg}.'
+				elif modifier_type == ModifierType.SCARE.value:
+					assert 0.0 <= modifier_amount <= 1.0, f'Invalid modifier_amount value: {modifier_amount}; should be between 0.0 and 1.0.'
+				attack.modifier = Modifier(type=modifier_type, chance=modifier_chance, turns=modifier_turns, amount=modifier_amount)
+			return attack
+
+	return HeroMakingTools()
 
 
 def generate_hero(n_attacks: int,
 				  difficulty: str) -> Hero:
-	tool_lib: HeroMakingTools = HeroMakingTools()
+	import ollama
+
+	tool_lib = get_heromakingtools()
 
 	options = {
 		'temperature': configs.gen.temperature,
-		# 'top_p': configs.gen.top_p,
-		# 'top_k': configs.gen.top_k,
-		# 'seed': configs.rng_seed,
-		# 'num_ctx': 32768 * 3
+		'top_p': configs.gen.top_p,
+		'top_k': configs.gen.top_k,
+		'seed': configs.rng_seed,
+		'num_ctx': 32768 * 3
 	}
 	formatted_usrmsg = configs.gen.llm_usrmsg.format(n_attacks=n_attacks,
 												  	 difficult=difficulty)
@@ -199,7 +211,8 @@ def generate_hero(n_attacks: int,
 		res = ollama.chat(model=configs.gen.llm_model,
 		                  messages=messages,
 		                  tools=tool_lib.get_tool_schema(),
-		                  options=options)
+		                  options=options,
+						  stream=False)
 		print(f'{res=}')
 		if res['message'].get('tool_calls'):
 			for tool in res['message']['tool_calls']:

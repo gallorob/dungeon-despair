@@ -7,3 +7,5 @@ dungeon-despair-domain
 my_scenarios
 update_existing_scenario.py
 assets/models
+build/
+dist/

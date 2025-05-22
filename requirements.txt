@@ -11,6 +11,6 @@ xformers
 rembg
 peft
 onnxruntime
-outlines
 sentencepiece
 datasets
+pyinstaller
