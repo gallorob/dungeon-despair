@@ -23,7 +23,7 @@ exe = EXE(
     a.datas,
     [],
     name='Dungeon Despair',
-    icon='assets\\dungeod_despair_logo.ico',
+    icon='assets\\dungeon_despair_logo.ico',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
