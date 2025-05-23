@@ -3,12 +3,5 @@ pyyaml
 pydantic
 pillow<=11.1
 fire
-numpy
-diffusers
-compel
-rembg
-peft
-onnxruntime
-sentencepiece
-datasets
 pyinstaller
+requests

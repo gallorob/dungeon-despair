@@ -1,5 +1,4 @@
 import json
-import os
 import random
 from typing import List, Optional, Tuple
 from dungeon_despair.domain.attack import Attack
@@ -146,7 +145,7 @@ def generate_hero(n_attacks: int,
 		'temperature': configs.gen.temperature,
 		'top_p': configs.gen.top_p,
 		'top_k': configs.gen.top_k,
-		'seed': configs.rng_seed,
+		# 'seed': configs.rng_seed,
 		'num_ctx': 32768 * 3
 	}
 	formatted_usrmsg = configs.gen.llm_usrmsg.format(n_attacks=n_attacks,
