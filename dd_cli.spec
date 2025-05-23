@@ -10,7 +10,7 @@ a = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=['pygame_gui'],
+    excludes=['torch', 'ollama', 'diffusers', 'accelerate', 'compel', 'rembg', 'peft', 'onnxruntime', 'sentencepiece', 'datasets', 'scipy', 'pandas', 'sympy'],
     noarchive=False,
     optimize=0,
 )
