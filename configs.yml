@@ -53,15 +53,3 @@ gen:
   temperature: 0.6
   top_p: 0.2
   top_k: 10
-  sd_model: './assets/models/aZovyaRPGArtistTools_v4.safetensors'
-  sd_lora: 'NecroSketcherAlpha.safetensors'
-  disable_progress_bar: true
-  cache_dir: './assets/models'
-  img_height: 768
-  img_width: 512
-  inference_steps: 30
-  guidance_scale: 7.5
-  eta: 1.0
-  lora_scale: 0.75
-  sd_prompt: 'zrpgstyle, darkest dungeon, (full body)+++ {entity_name}: ({entity_description})++,masterpiece++, highly detailed+, (flat empty background)+++'
-  sd_neg_prompt: '(close-up)+++, out of shot, (multiple characters)++, (many characters)++, not centered, floor, walls, pedestal, duplication, repetition, bad anatomy, monochromatic, disfigured, badly drawn, bad hands, naked, nude'
