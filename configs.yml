@@ -1,4 +1,7 @@
 rng_seed: 1234
+server_ip: '10.60.19.36'
+server_port: 8080
+username: 'gallorob'
 
 ui:
   screen_width: 1280

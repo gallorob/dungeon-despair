@@ -11,62 +11,17 @@ from pydantic import ValidationError
 from configs import configs
 from dungeon_despair.domain.configs import config as ddd_config
 
-device: Optional[str] = None
-stablediff = None
-compel_stablediff = None
-
-
-def load_diffusion_models():
-	import torch as th
-	from diffusers import StableDiffusionPipeline, UniPCMultistepScheduler
-	from compel import Compel
-	
-	global device, stablediff, compel_stablediff
-	device = 'cuda' if th.cuda.is_available() else 'cpu'
-
-	stablediff = StableDiffusionPipeline.from_single_file(
-		configs.gen.sd_model,
-		torch_dtype=th.float16,
-		cache_dir=configs.gen.cache_dir,
-		safety_checker=None).to(device)
-	stablediff.safety_checker = None
-	stablediff.scheduler = UniPCMultistepScheduler.from_config(stablediff.scheduler.config,
-															use_karras=True,
-															algorithm_type='sde-dpmsolver++')
-	stablediff.set_progress_bar_config(disable=configs.gen.disable_progress_bar)
-	stablediff.load_lora_weights(configs.gen.cache_dir, weight_name=configs.gen.sd_lora)
-	stablediff.enable_model_cpu_offload()
-	stablediff.enable_attention_slicing()
-	# stablediff.enable_xformers_memory_efficient_attention()
-	compel_stablediff = Compel(tokenizer=stablediff.tokenizer,
-							text_encoder=stablediff.text_encoder,
-							truncate_long_prompts=False)
+from server_utils import convert_and_save, send_to_server
 
 
 def generate_sprite(name: str,
 					description: str) -> str:
-	import rembg
-	import torch as th
-
-	global device
-	global stablediff
-	global compel_stablediff
-
-	formatted_prompt = configs.gen.sd_prompt.format(entity_name=name,
-												 	entity_description=description)
-	conditioning = compel_stablediff.build_conditioning_tensor(formatted_prompt)
-	neg_conditioning = compel_stablediff.build_conditioning_tensor(configs.gen.sd_neg_prompt)
-	[conditioning, neg_conditioning] = compel_stablediff.pad_conditioning_tensors_to_same_length(conditionings=[conditioning, neg_conditioning])
-	img = stablediff(prompt_embeds=conditioning, negative_prompt_embeds=neg_conditioning,
-				  	 height=configs.gen.img_height, width=configs.gen.img_width,
-					 num_inference_steps=configs.gen.inference_steps,
-					 guidance_scale=configs.gen.guidance_scale,
-					 cross_attention_kwargs={"scale": configs.gen.lora_scale},
-					 generator=th.Generator(device=device).manual_seed(configs.rng_seed) if configs.rng_seed != -1 else None).images[0]
-	img = rembg.remove(img, alpha_matting=True)
-	fname = os.path.join(configs.assets.dungeon_dir, f'hero_{name}.png')
-	img.save(fname)
-	return os.path.basename(fname)
+	data = {
+		'hero_name': name,
+		'hero_description': description,
+	}
+	res = send_to_server(data=data, endpoint='dd_generate_hero')
+	return convert_and_save(b64_img=res['image_base64'], fname=res['fname'], dirname=configs.assets.dungeon_dir)
 
 
 def get_heromakingtools():
@@ -185,9 +140,6 @@ def get_heromakingtools():
 
 def generate_hero(n_attacks: int,
 				  difficulty: str) -> Hero:
-	import requests
-	import json
-
 	tool_lib = get_heromakingtools()
 
 	options = {
@@ -213,14 +165,14 @@ def generate_hero(n_attacks: int,
 			{'role': 'user', 'content': formatted_usrmsg},
 		]
 		print(f'{messages=}')
-		res = json.loads(requests.post(url='http://localhost:11434/api/chat',
-								 json={
-									 'model': configs.gen.llm_model,
+		res = send_to_server(data={
+									 'model_name': configs.gen.llm_model,
 									 'messages': messages,
 									 'stream': False,
 									 'options': options,
 									 'tools': tool_lib.get_tool_schema()
-								 }).text)
+								 },
+							 endpoint='ollama_generate')
 		print(f'{res=}')
 		if res['message'].get('tool_calls'):
 			for tool in res['message']['tool_calls']:

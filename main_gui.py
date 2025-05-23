@@ -23,7 +23,7 @@ from engine.game_engine import GameEngine, GameState
 from engine.message_system import msg_system
 from engine.movement_engine import Destination
 from engine.stress_system import stress_system
-from heroes_party import Hero, generate_new_party, load_diffusion_models
+from heroes_party import Hero, generate_new_party
 from player.ai_player import AIPlayer
 from player.base_player import PlayerType, Player
 from player.human_player import HumanPlayer
@@ -37,8 +37,6 @@ from ui_components.regen_window import RegenPicker
 from utils import get_entities_differences, reset_entity, set_ingame_properties
 
 # TODO: Sleep/have some delay between heroes actions, maybe configurable?
-
-load_diffusion_models()
 
 # clear assets folder on exec
 if os.path.exists(configs.assets.dungeon_dir):

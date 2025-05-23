@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 from dungeon_despair.domain.encounter import Encounter
 import pygame
 from PIL import Image
