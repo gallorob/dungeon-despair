@@ -74,7 +74,7 @@ def get_heromakingtools():
 			assert ddd_config.min_spd <= spd <= ddd_config.max_spd, f'Invalid spd value: {spd}; should be between {ddd_config.min_spd} and {ddd_config.max_spd}.'
 			assert 0.0 <= trap_resist <= 1.0, f'Invalid trap_resist value: {trap_resist}; should be between 0.0 and 1.0.'
 			assert 0.0 <= stress_resist <= 1.0, f'Invalid trastress_resistp_resist value: {stress_resist}; should be between 0.0 and 1.0.'
-			hero = Hero(name=name, description=description, hp=hp, dodge=dodge, prot=prot, spd=spd, trap_resist=trap_resist, stress_resist=stress_resist, max_hp=hp)
+			hero = Hero(name=name, description=description, hp=hp, dodge=dodge, prot=prot, spd=spd, trap_resist=trap_resist, stress_resist=stress_resist, max_hp=hp, type="hero")
 			return hero
 
 		@AILibFunction(name='add_attack', description='Add an attack to a hero.',
