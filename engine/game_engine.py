@@ -41,7 +41,7 @@ class GameEngine:
 		self.heroes: Optional[HeroParty] = None
 		
 		self.state = GameState.LOADING
-		self.scenario = None
+		self.scenario: Optional[Level] = None
 
 		self.wave = 0
 	
@@ -58,6 +58,11 @@ class GameEngine:
 		self.move_to(dest=Destination(to=self.scenario.current_room,
 		                              idx=-1))
 	
+	def restart_level_from_room(self,
+							 	room_name: str) -> None:
+		self.scenario.current_room = room_name
+		self.set_level(self.scenario)
+
 	def tick(self):
 		'''Update the state of the game based on the current scenario state'''
 		def try_combat():

@@ -350,8 +350,7 @@ while running:
 				if len(diff_entities) > 0:
 					if stress_system.stress < min([x.cost for x in diff_entities]):
 						msg_system.add_msg(f'Not enough stress points! The dungeon will remain as is...')
-						game_engine.move_to(Destination(to=level_copy.current_room,
-									  					idx=-1))
+						game_engine.restart_level_from_room(room_name=level_copy.current_room)
 						game_engine.state = GameState.NEXT_WAVE
 					else:
 						regen_picker = RegenPicker(rect=pygame.Rect(configs.ui.screen_width / 4, configs.ui.screen_height / 4,
@@ -363,8 +362,7 @@ while running:
 						game_engine.state = GameState.REGENERATING
 				else:
 					msg_system.add_msg(f'The dungeon lives on!')
-					game_engine.move_to(Destination(to=level_copy.current_room,
-									 				idx=-1))
+					game_engine.restart_level_from_room(room_name=level_copy.current_room)
 					game_engine.state = GameState.NEXT_WAVE
 				
 			elif game_engine.state == GameState.NEXT_WAVE:
@@ -373,7 +371,7 @@ while running:
 				set_ingame_properties(game_data=game_engine.scenario,
 				                      heroes=heroes)
 				game_engine.heroes = heroes
-				# game_engine.set_level(game_engine.scenario)
+				game_engine.restart_level_from_room(room_name=level_copy.current_room)
 				game_engine.state = GameState.IDLE
 				game_engine.tick()
 				appstate = AppState.IN_GAME
