@@ -2,7 +2,7 @@ import copy
 import json
 import os
 from enum import Enum, auto
-from typing import List, Union, Dict, Any
+from typing import List, Optional, Union, Dict, Any
 
 from dungeon_despair.domain.utils import ActionType, get_enum_by_value
 import fire
@@ -109,17 +109,22 @@ class EventsLogger:
 
 class Simulator:
 	def run_simulation(self,
-	                   scenario_filename: str,
+	                   scenario_filename: Optional[str],
+					   scenario: Optional[str],
 	                   simulation_type: str,
 	                   simulation_runs: int,
 	                   output_filename: str) -> None:
 		# Set assets folder
 		ddd_config.temp_dir = configs.assets.dungeon_dir
+		if scenario is not None:
+			base_scenario = Level.model_validate_json(scenario)
+		else:
+			base_scenario = Level.load_as_scenario(scenario_filename)
 		events_logger = EventsLogger(output_filename=output_filename)
 		events_logger.start_exp()
 		simulation_logger = SimulatorLogger(output_filename=output_filename,
 		                                    **{
-			                                    'level': Level.load_as_scenario(scenario_filename),
+			                                    'level': base_scenario,
 			                                    'simulation_type': simulation_type
 		                                    })
 		for run_n in tqdm(range(simulation_runs), desc='Simulating...', position=0):
@@ -127,7 +132,7 @@ class Simulator:
 			events_logger.start_run(run_n)
 			simulation_logger.start_run()
 			# Load the scenario
-			scenario = Level.load_as_scenario(scenario_filename)
+			scenario = copy.deepcopy(base_scenario)
 			# Simulate a random game
 			self.__simulate_scenario(scenario, simulation_type, simulation_logger.current_run)
 			# Log simulation messages
