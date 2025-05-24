@@ -301,7 +301,8 @@ while running:
 																		'game_engine_copy': copy.deepcopy(game_engine)})
 					if action_idx is not None:
 						game_engine.process_attack(attack_idx=action_idx)
-						game_engine.tick()
+						if game_engine.combat_engine.state != CombatPhase.CHOOSE_POSITION:
+							game_engine.tick()
 						update_ui_elements()
 						# If mouse is on an action, display the targeted icons without waiting for the next mouse movement
 						on_action = action_window.check_colliding_action(pos=event.pos) if hasattr(event, 'pos') else None
@@ -336,7 +337,6 @@ while running:
 						if sprite_idx is None:
 							move_action = [action for action in game_engine.combat_engine.actions if get_enum_by_value(ActionType, action.type) == ActionType.MOVE][0]
 							game_engine.try_cancel_attack(attack_idx=game_engine.combat_engine.actions.index(move_action))
-							game_engine.tick()
 							update_ui_elements()
 					if sprite_idx is not None:
 						game_engine.process_move(idx=sprite_idx)

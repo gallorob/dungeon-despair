@@ -2,6 +2,7 @@ import copy
 import random
 from typing import List, Tuple, Optional, Set, Dict
 
+from dungeon_despair.domain.utils import ActionType
 import numpy as np
 
 from dungeon_despair.domain.entities.enemy import Enemy
@@ -49,10 +50,31 @@ class AIPlayer(Player):
 		attacker, _ = self.game_engine_copy.attacker_and_idx
 		for i, action in enumerate(actions):
 			eng_copy = copy.deepcopy(self.game_engine_copy)
-			eng_copy.process_attack(i)
-			eng_copy.tick()
-			stress_diff = stress_system.stress - prev_stress
-			stress_system.stress -= stress_diff  # reset stress to before simulation
+			# only evaluate active actions
+			if action.active:  # pass has 10 stress, move has 0, both are active
+				eng_copy.process_attack(i)
+				eng_copy.tick()
+				stress_diff = stress_system.stress - prev_stress
+				stress_system.stress -= stress_diff  # reset stress to before simulation
+				# if action is a move, continue the simulation
+				if action.type == ActionType.MOVE.value:
+					curr_eng_copy = copy.deepcopy(eng_copy)
+					idx = self.pick_moving(**{'n_heroes': len(eng_copy.heroes.party),
+							 				'n_enemies': len(eng_copy.current_encounter.enemies),
+											'game_engine_copy': eng_copy})
+					eng_copy = curr_eng_copy
+					self.game_engine_copy = kwargs['game_engine_copy']
+					del curr_eng_copy
+					if idx is not None:
+						eng_copy.process_move(idx)
+						stress_diff = stress_system.stress - prev_stress
+						stress_system.stress -= stress_diff
+					else: # cannot move to a better position
+						# setting it here because it's 0 in the stress system
+						# set it to whatever the stress from passing was, + 1
+						stress_diff = stress_diffs[-1] + 1
+			else:
+				stress_diff = 999999
 			stress_diff *= 1 if isinstance(attacker, Hero) else -1  # heroes want to minimize their stress
 			stress_diffs.append(stress_diff)
 			del eng_copy
