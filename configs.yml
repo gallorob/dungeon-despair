@@ -18,6 +18,7 @@ assets:
     background: './assets/screens/background.png'
     gameover: './assets/screens/gameover.png'
   icons:
+    unk_hero: './assets/icons/unk_hero.png'
     combat:
       attacking: './assets/icons/attacking_icon.png'
       moving: './assets/icons/moving_icon.png'

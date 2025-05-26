@@ -138,7 +138,8 @@ def get_heromakingtools():
 
 
 def generate_hero(n_attacks: int,
-				  difficulty: str) -> Hero:
+				  difficulty: str,
+				  curr_heroes: List[Hero]) -> Hero:
 	tool_lib = get_heromakingtools()
 
 	options = {
@@ -148,13 +149,19 @@ def generate_hero(n_attacks: int,
 		# 'seed': configs.rng_seed,
 		'num_ctx': 32768 * 3
 	}
+
+	curr_heroes_str = '\n'.join([hero.model_dump_json() for hero in curr_heroes])
+	curr_heroes_str = curr_heroes_str.replace('"modifier":null', ',"modifier_type":"no-modifier","modifier_chance":0.0,"modifier_turns":0,"modifier_amount":0.0')
+	curr_heroes_str = curr_heroes_str.replace('"sprite":null', '"sprite":""')
+
 	formatted_usrmsg = configs.gen.llm_usrmsg.format(n_attacks=n_attacks,
 												  	 difficult=difficulty)
 	hero = None
 	while hero is None or len(hero.attacks) != n_attacks:
-		print('New session...')
+		# print('New session...')
 		with open(configs.gen.llm_sysprompt, 'r') as f:
 			sysprompt = f.read()
+		sysprompt = sysprompt.replace('$curr_heroes$', curr_heroes_str)
 		if hero:
 			sysprompt = sysprompt.replace('$current_hero$', hero.model_dump_json())
 		else:
@@ -163,7 +170,7 @@ def generate_hero(n_attacks: int,
 			{'role': 'system', 'content': sysprompt},
 			{'role': 'user', 'content': formatted_usrmsg},
 		]
-		print(f'{messages=}')
+		# print(f'{messages=}')
 		res = send_to_server(data={
 									 'model_name': configs.gen.llm_model,
 									 'messages': messages,
@@ -172,14 +179,14 @@ def generate_hero(n_attacks: int,
 									 'tools': tool_lib.get_tool_schema()
 								 },
 							 endpoint='ollama_generate')
-		print(f'{res=}')
+		# print(f'{res=}')
 		if res['message'].get('tool_calls'):
 			for tool in res['message']['tool_calls']:
 				func_name = tool['function']['name']
 				func_args = tool['function']['arguments']
 				output = tool_lib.try_call_func(func_name=func_name,
 												func_args=func_args)
-				print(f'{output=}')
+				# print(f'{output=}')
 				if isinstance(output, Hero):
 					hero = output
 				elif isinstance(output, Attack):
@@ -187,11 +194,6 @@ def generate_hero(n_attacks: int,
 						hero.attacks.append(output)
 				else:
 					messages.append({'role': 'tool', 'content': output})
-		
-		print('###')
-
-	print('Generating sprite...')
-	hero.sprite = generate_sprite(name=hero.name, description=hero.description)
 
 	return hero
 

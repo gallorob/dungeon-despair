@@ -32,6 +32,7 @@ from ui_components.action_menu import ActionWindow, trap_choices, treasure_choic
 from ui_components.encounter_preview import EncounterPreview
 from ui_components.events_history import EventsHistory
 from ui_components.gameover_window import GameOver
+from ui_components.heroes_roster import HeroRosterWindow
 from ui_components.level_preview import LevelPreview
 from ui_components.regen_window import RegenPicker
 from utils import get_entities_differences, reset_entity, set_ingame_properties
@@ -149,6 +150,8 @@ cntxt_mngr = ContextManager()
 class AppState(Enum):
 	IN_MAIN_MENU = auto()
 	IN_LOADING_SCENARIO = auto()
+	GENERATING_HEROES = auto()
+	FIRST_INIT = auto()
 	IN_GAME = auto()
 	PICKING_REGEN = ()
 appstate = AppState.IN_LOADING_SCENARIO
@@ -196,7 +199,7 @@ level_copy: Optional[Level] = None
 while running:
 	time_delta = clock.tick(200) / 1000.0
 	
-	for event in pygame.event.get():
+	for event_n, event in enumerate(pygame.event.get()):
 		ui_manager.process_events(event)
 		
 		if event.type == pygame.QUIT:
@@ -221,23 +224,47 @@ while running:
 			if event.type == pygame_gui.UI_FILE_DIALOG_PATH_PICKED:
 				selected_file_path = event.text
 				level = Level.load_as_scenario(selected_file_path)
-				heroes = generate_new_party(wave_n=game_engine.wave)
-				set_ingame_properties(game_data=level,
+				roster_window = HeroRosterWindow(rect=pygame.Rect(configs.ui.screen_width / 4, configs.ui.screen_height / 4,
+												  configs.ui.screen_width / 2, configs.ui.screen_height / 2),
+								 ui_manager=ui_manager)
+				roster_initialized = False
+				appstate = AppState.GENERATING_HEROES
+		
+		elif appstate == AppState.GENERATING_HEROES:
+			if not roster_initialized:
+				roster_initialized = roster_window.generate_party_steps(wave_n=game_engine.wave)
+				break
+			if event_n == 0: roster_window.step()
+			if roster_window.final_party is not None:
+				heroes = roster_window.final_party
+				roster_window.kill()
+
+				if game_engine.scenario is None:
+					# first wave only
+					set_ingame_properties(game_data=level,
+										heroes=heroes)
+					level_copy = copy.deepcopy(level)
+					game_engine.heroes = heroes
+					game_engine.set_level(level)
+					# Initialize in-game screens
+					level_preview.show()
+					encounter_preview.show()
+					action_window.show()
+					events_history.show()
+				else:
+					set_ingame_properties(game_data=game_engine.scenario,
 				                      heroes=heroes)
-				level_copy = copy.deepcopy(level)
-				game_engine.heroes = heroes
-				game_engine.set_level(level)
+					game_engine.heroes = heroes
+					game_engine.restart_level_from_room(room_name=level_copy.current_room)
+					game_engine.state = GameState.IDLE
+					# reinizialize UI elements
+					level_preview.reset_preview()
 				game_engine.tick()
 				appstate = AppState.IN_GAME
-				# Initialize in-game screens
-				level_preview.show()
 				level_preview.create_minimap(game_data=game_engine.scenario)
-				encounter_preview.show()
-				action_window.show()
-				events_history.show()
 				# Update UI elements
 				update_ui_elements()
-		
+
 		elif appstate == AppState.IN_GAME:
 			if game_engine.state == GameState.IDLE:
 				dest: Optional[Destination] = None
@@ -367,20 +394,12 @@ while running:
 				
 			elif game_engine.state == GameState.NEXT_WAVE:
 				msg_system.add_msg(f'<b>## Starting a new wave...</b>')
-				heroes = generate_new_party(wave_n=game_engine.wave)
-				set_ingame_properties(game_data=game_engine.scenario,
-				                      heroes=heroes)
-				game_engine.heroes = heroes
-				game_engine.restart_level_from_room(room_name=level_copy.current_room)
-				game_engine.state = GameState.IDLE
-				game_engine.tick()
-				appstate = AppState.IN_GAME
-				# reinizialize UI elements
-				level_preview.reset_preview()
-				level_preview.create_minimap(game_data=game_engine.scenario)
-				# Update UI elements
-				update_ui_elements()
-
+				roster_window = HeroRosterWindow(rect=pygame.Rect(configs.ui.screen_width / 4, configs.ui.screen_height / 4,
+												  configs.ui.screen_width / 2, configs.ui.screen_height / 2),
+								 ui_manager=ui_manager)
+				roster_initialized = False
+				appstate = AppState.GENERATING_HEROES
+				
 		for msg in msg_system.get_queue():
 			events_history.add_text_and_scroll(msg)
 		
