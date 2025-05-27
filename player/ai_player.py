@@ -23,6 +23,7 @@ class AIPlayer(Player):
 		super().__init__(PlayerType.AI)
 		self.visited_areas: Dict[str, int] = {}
 		self.game_engine_copy: Optional[GameEngine] = None
+		self.__current_area: Optional[Destination] = None
 	
 	def update_visited_areas(self,
 	                         dest: Destination) -> None:
@@ -34,11 +35,54 @@ class AIPlayer(Player):
 	
 	def pick_destination(self,
 	                     **kwargs) -> Destination:
-		destinations = kwargs['destinations']
+		destinations: List[Destination] = kwargs['destinations']
 		areas_count = kwargs['unk_areas']
-		dest_count = [areas_count[str(destination)] + self.visited_areas.get(str(destination), 0) for destination in destinations]
-		destination = destinations[np.argmin(dest_count)]
-		return destination
+		
+		print(f'\n\n\tDestinations: {[(d.to, d.idx) for d in destinations]}')
+		print(f'\tAreas count: {areas_count}')
+		# Filter out destinations that have already been explored
+		unexplored_destinations = [
+			destination for destination in destinations
+			if self.visited_areas.get(str(destination), 0) == 0
+		]
+		print(f'\t\tUnexplored: {[(d.to, d.idx) for d in unexplored_destinations]}')
+		
+		viable_destinations = [
+			dest for dest in unexplored_destinations
+			if areas_count[str(dest)] > 1 or str(dest) != str(self.__current_area)
+		]
+		print(f'\tViable: {[(d.to, d.idx) for d in viable_destinations]}')
+
+		if viable_destinations:
+			next_destination = max(
+				viable_destinations,
+				key=lambda dest: areas_count[str(dest)]
+			)
+			self.__current_area = next_destination
+			self.update_visited_areas(next_destination)
+
+			print(f'\t->Picked: {[next_destination.to, next_destination.idx]}')
+			return next_destination
+
+		if len(unexplored_destinations) == 0 and len(viable_destinations) == 0:
+			# current area must be a dead end room or a corridor leading to a dead end
+			k = str(self.__current_area)
+			self.visited_areas[k] = 999
+
+		# All unexplored are dead ends or everything is explored — fall back
+		dest_count = [
+			areas_count[str(dest)] + self.visited_areas.get(str(dest), 0)
+			for dest in destinations
+		]
+		print(f'\tdest_count: {dest_count}')
+
+		next_destination = destinations[np.argmin(dest_count)]
+		self.__current_area = next_destination
+		self.update_visited_areas(next_destination)
+
+		print(f'\t->Picked: {[next_destination.to, next_destination.idx]}')
+
+		return next_destination
 	
 	def pick_actions(self,
 	                 **kwargs) -> int:
