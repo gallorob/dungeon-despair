@@ -2,6 +2,7 @@ from argparse import Namespace
 
 import yaml
 
+
 def dict_to_namespace(d):
     if isinstance(d, dict):
         for key, value in d.items():
@@ -13,5 +14,5 @@ def dict_to_namespace(d):
         return d
 
 
-with open('./configs.yml', 'r') as file:
+with open("./configs.yml", "r") as file:
     configs = dict_to_namespace(yaml.safe_load(file))
