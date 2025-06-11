@@ -4,5 +4,6 @@ pyyaml
 pydantic
 pillow<=11.1
 fire
+numpy
 pyinstaller
 requests
