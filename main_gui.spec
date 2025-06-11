@@ -5,7 +5,7 @@ a = Analysis(
     ['main_gui.py'],
     pathex=[],
     binaries=[],
-    datas=[('assets/dungeon_assets', 'assets/dungeon_assets'), ('assets/llm_prompts', 'assets/llm_prompts'), ('assets/screens', 'assets/screens'), ('assets/themes', 'assets/themes')],
+    datas=[('configs.yml', '.'), ('assets/dungeon_assets', 'assets/dungeon_assets'), ('assets/llm_prompts', 'assets/llm_prompts'), ('assets/screens', 'assets/screens'), ('assets/themes', 'assets/themes')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
