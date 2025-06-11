@@ -1,5 +1,6 @@
 import copy
 import json
+import os
 from typing import List, Optional, Union, Dict, Any
 
 from dungeon_despair.domain.utils import ActionType, get_enum_by_value
@@ -23,6 +24,19 @@ from player.random_player import RandomPlayer
 from engine.stress_system import stress_system
 from engine.message_system import msg_system
 from utils import set_ingame_properties
+
+
+# create dungeon assets folder if it does not exists
+
+if not os.path.exists(configs.assets.dungeon_dir):
+    os.makedirs(configs.assets.dungeon_dir)
+# clear assets folder on exec
+
+if os.path.exists(configs.assets.dungeon_dir):
+    for file in os.listdir(configs.assets.dungeon_dir):
+        if os.path.isfile(os.path.join(configs.assets.dungeon_dir, file)):
+            os.remove(os.path.join(configs.assets.dungeon_dir, file))
+ddd_config.temp_dir = configs.assets.dungeon_dir
 
 
 # TODO: Would be nicer to load these differently
@@ -310,8 +324,6 @@ class Simulator:
         simulation_runs: int,
         output_filename: str,
     ) -> None:
-        # Set assets folder
-        ddd_config.temp_dir = configs.assets.dungeon_dir
         if scenario is not None:
             base_scenario = Level.model_validate_json(scenario)
         else:

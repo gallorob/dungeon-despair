@@ -5,7 +5,7 @@ a = Analysis(
     ['dd_cli.py'],
     pathex=[],
     binaries=[],
-    datas=[('configs.yml', '.'), ('assets/base_heroes', 'assets/base_heroes'), ('assets/dungeon_assets', 'assets/dungeon_assets'), ('assets/icons', 'assets/icons'), ('assets/screens', 'assets/screens'), ('assets/themes', 'assets/themes'), ('assets/dungeon_despair_logo.png', 'assets/dungeon_despair_logo.png')],
+    datas=[('configs.yml', '.'), ('assets/base_heroes', 'assets/base_heroes'), ('assets/icons', 'assets/icons'), ('assets/screens', 'assets/screens'), ('assets/themes', 'assets/themes'), ('assets/dungeon_despair_logo.png', 'assets/dungeon_despair_logo.png')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
