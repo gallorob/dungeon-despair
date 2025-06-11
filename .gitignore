@@ -1,6 +1,6 @@
 .idea
 __pycache__
-assets/dungeon_assets
+assets/dungeon_assets/*.png
 dungeon-despair-domain
 *.log
 *.json
