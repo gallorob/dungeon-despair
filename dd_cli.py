@@ -7,7 +7,7 @@ from dungeon_despair.domain.utils import ActionType, get_enum_by_value
 import fire
 from tqdm.auto import tqdm
 
-from configs import configs
+from configs import configs, resource_path
 from dungeon_despair.domain.configs import config as ddd_config
 from dungeon_despair.domain.corridor import Corridor
 from dungeon_despair.domain.encounter import Encounter
@@ -46,7 +46,7 @@ def get_temp_heroes():
         Hero(
             name="Gareth Ironclad",
             description="A tall, muscular human fighter with short dark hair, a well-trimmed beard, and piercing blue eyes. He wears polished plate armor with a large sword and a shield with a family crest.",
-            sprite="assets/base_heroes/gareth ironclad.png",
+            sprite=resource_path("./assets/base_heroes/gareth ironclad.png"),
             type="hero",
             hp=15.0,
             dodge=0.1,
@@ -91,7 +91,7 @@ def get_temp_heroes():
         Hero(
             name="Elira Moonwhisper",
             description="A small gnome priest with long wavy silver hair, large emerald eyes, and luminescent skin. She wears flowing white and gold robes with intricate patterns and a glowing crystal pendant.",
-            sprite="assets/base_heroes/elira moonwhisper.png",
+            sprite=resource_path("./assets/base_heroes/elira moonwhisper.png"),
             type="hero",
             hp=8.0,
             dodge=0.2,
@@ -140,7 +140,7 @@ def get_temp_heroes():
         Hero(
             name="Aelarion Starfire",
             description="A tall, slender elf mage with long platinum blonde hair, violet eyes, and pale skin. He wears a deep blue robe with silver runes, carrying a carved staff and a spellbook.",
-            sprite="assets/base_heroes/aelarion starfire.png",
+            sprite=resource_path("./assets/base_heroes/aelarion starfire.png"),
             type="hero",
             hp=10.0,
             dodge=0.1,
@@ -185,7 +185,7 @@ def get_temp_heroes():
         Hero(
             name="Milo Underfoot",
             description="A small, nimble hobbit thief with short curly brown hair, bright hazel eyes, and tanned skin. He dresses in dark colors with many pockets and moves with silent grace.",
-            sprite="assets/base_heroes/milo underfoot.png",
+            sprite=resource_path("./assets/base_heroes/milo underfoot.png"),
             type="hero",
             hp=6.0,
             dodge=0.9,

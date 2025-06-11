@@ -5,7 +5,7 @@ from pygame import Rect
 from pygame_gui.core.interfaces import IUIManagerInterface
 from pygame_gui.elements import UIWindow, UIImage, UILabel
 
-from configs import configs
+from configs import configs, resource_path
 from engine.stress_system import stress_system
 
 
@@ -19,7 +19,7 @@ class GameOver(UIWindow):
             draggable=False,
             always_on_top=True,
         )
-        self.img = pygame.image.load(configs.assets.screens.gameover).convert_alpha()
+        self.img = pygame.image.load(resource_path(configs.assets.screens.gameover)).convert_alpha()
         self.img.set_alpha(0)
 
         self.background_image: Optional[UIImage] = None

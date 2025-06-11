@@ -6,7 +6,7 @@ from pygame import Rect
 from pygame_gui.core.interfaces import IUIManagerInterface
 from pygame_gui.elements import UIImage, UILabel, UIWindow
 
-from configs import configs
+from configs import configs, resource_path
 from dungeon_despair.domain.corridor import Corridor
 from dungeon_despair.domain.encounter import Encounter
 from dungeon_despair.domain.entities.enemy import Enemy
@@ -271,7 +271,7 @@ class EncounterPreview(UIWindow):
                 self.padding / 2,
                 self.padding / 2,
             ),
-            image_surface=pygame.image.load(configs.assets.icons.combat.attacking),
+            image_surface=pygame.image.load(resource_path(configs.assets.icons.combat.attacking)),
             manager=self.ui_manager,
             container=self.get_container(),
             parent_element=self,
@@ -314,7 +314,7 @@ class EncounterPreview(UIWindow):
                         self.padding / 2,
                     ),
                     image_surface=pygame.image.load(
-                        configs.assets.icons.combat.targeted
+                        resource_path(configs.assets.icons.combat.targeted)
                     ),
                     manager=self.ui_manager,
                     container=self.get_container(),
@@ -367,7 +367,7 @@ class EncounterPreview(UIWindow):
                     self.padding / 2,
                     self.padding / 2,
                 ),
-                image_surface=pygame.image.load(configs.assets.icons.combat.moving),
+                image_surface=pygame.image.load(resource_path(configs.assets.icons.combat.moving)),
                 manager=self.ui_manager,
                 container=self.get_container(),
                 parent_element=self,
@@ -377,13 +377,13 @@ class EncounterPreview(UIWindow):
     def update_modifiers(self, heroes: HeroParty, enemies: List[Enemy]):
         def get_icon(modifier_type: ModifierType):
             if modifier_type == ModifierType.BLEED:
-                return configs.assets.icons.modifiers.bleed
+                return resource_path(configs.assets.icons.modifiers.bleed)
             elif modifier_type == ModifierType.HEAL:
-                return configs.assets.icons.modifiers.heal
+                return resource_path(configs.assets.icons.modifiers.heal)
             elif modifier_type == ModifierType.SCARE:
-                return configs.assets.icons.modifiers.scare
+                return resource_path(configs.assets.icons.modifiers.scare)
             elif modifier_type == ModifierType.STUN:
-                return configs.assets.icons.modifiers.stun
+                return resource_path(configs.assets.icons.modifiers.stun)
             else:
                 raise ValueError(f"Unknown modifier type: {modifier_type.value}")
 

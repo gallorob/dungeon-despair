@@ -5,7 +5,7 @@ from dungeon_despair.domain.entities.hero import Hero
 import pygame
 from pygame_gui.elements import UITextBox, UIWindow, UIImage
 from pygame.rect import Rect
-from configs import configs
+from configs import configs, resource_path
 from heroes_party import HeroParty, generate_hero, generate_sprite, scale_difficulty
 from pygame_gui.core.interfaces import IUIManagerInterface
 
@@ -79,7 +79,7 @@ class HeroRosterWindow(UIWindow):
                     self.hero_portrait_w,
                     self.hero_portrait_h,
                 ),
-                image_surface=pygame.image.load(configs.assets.icons.unk_hero),
+                image_surface=pygame.image.load(resource_path(configs.assets.icons.unk_hero)),
                 manager=self.ui_manager,
                 container=self.get_container(),
                 parent_element=self,

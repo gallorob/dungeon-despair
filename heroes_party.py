@@ -6,7 +6,7 @@ from dungeon_despair.domain.entities.hero import Hero
 from dungeon_despair.domain.modifier import Modifier
 from dungeon_despair.domain.utils import ActionType, ModifierType, get_enum_by_value
 
-from configs import configs
+from configs import configs, resource_path
 from dungeon_despair.domain.configs import config as ddd_config
 
 from server_utils import convert_and_save, send_to_server
@@ -292,7 +292,7 @@ def generate_hero(n_attacks: int, difficulty: str, curr_heroes: List[Hero]) -> H
     hero = None
     while hero is None or len(hero.attacks) != n_attacks:
         # print('New session...')
-        with open(configs.gen.llm_sysprompt, "r") as f:
+        with open(resource_path(configs.gen.llm_sysprompt), "r") as f:
             sysprompt = f.read()
         sysprompt = sysprompt.replace("$curr_heroes$", curr_heroes_str)
         if hero:

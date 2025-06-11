@@ -6,7 +6,7 @@ from typing import Optional, Union
 import pygame
 import pygame_gui
 
-from configs import configs
+from configs import configs, resource_path
 from context_manager import ContextManager
 from dungeon_despair.domain.configs import config as ddd_config
 from dungeon_despair.domain.level import Level
@@ -61,13 +61,24 @@ pygame.init()
 
 screen = pygame.display.set_mode((configs.ui.screen_width, configs.ui.screen_height))
 pygame.display.set_caption("Dungeon Despair")
-pygame.display.set_icon(pygame.image.load(configs.assets.logo))
+pygame.display.set_icon(pygame.image.load(resource_path(configs.assets.logo)))
 
-background_image = pygame.image.load(configs.assets.screens.background)
+background_image = pygame.image.load(resource_path(configs.assets.screens.background))
+# Scale the background image to fit the screen
+background_image = pygame.transform.scale(
+    background_image,
+    (configs.ui.screen_width, configs.ui.screen_height),
+)
+# Blur the background image a bit
+background_image = pygame.transform.smoothscale(
+    background_image,
+    (configs.ui.screen_width, configs.ui.screen_height),
+)
+# Draw the background image on the screen
 screen.blit(
     background_image,
     dest=pygame.Rect(0, 0, configs.ui.screen_width, configs.ui.screen_height),
-)  # TODO: Scale the background correctly and blur it a bit
+)
 
 # TODO: Add all the other main menu things (logo, title, load scenario button, quit button)
 
