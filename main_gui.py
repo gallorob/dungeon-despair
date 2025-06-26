@@ -36,13 +36,16 @@ from utils import get_entities_differences, set_ingame_properties
 
 # create scenarios folder if it does not exists
 
+
 if not os.path.exists("./my_scenarios"):  # TODO: Should be read from configs
     os.mkdir("./my_scenarios")
 # create dungeon assets folder if it does not exists
 
+
 if not os.path.exists(configs.assets.dungeon_dir):
     os.makedirs(configs.assets.dungeon_dir)
 # clear assets folder on exec
+
 
 if os.path.exists(configs.assets.dungeon_dir):
     for file in os.listdir(configs.assets.dungeon_dir):
@@ -51,13 +54,15 @@ if os.path.exists(configs.assets.dungeon_dir):
 ddd_config.temp_dir = configs.assets.dungeon_dir
 
 # TODO: Should be its own error dialog and eventually close the application
+
+
 if not check_server_connection():
     print("No connection to the server!")
     exit(-1)
-
 pygame.init()
 
 # Initialize the screen
+
 
 screen = pygame.display.set_mode((configs.ui.screen_width, configs.ui.screen_height))
 pygame.display.set_caption("Dungeon Despair")
@@ -65,16 +70,22 @@ pygame.display.set_icon(pygame.image.load(resource_path(configs.assets.logo)))
 
 background_image = pygame.image.load(resource_path(configs.assets.screens.background))
 # Scale the background image to fit the screen
+
+
 background_image = pygame.transform.scale(
     background_image,
     (configs.ui.screen_width, configs.ui.screen_height),
 )
 # Blur the background image a bit
+
+
 background_image = pygame.transform.smoothscale(
     background_image,
     (configs.ui.screen_width, configs.ui.screen_height),
 )
 # Draw the background image on the screen
+
+
 screen.blit(
     background_image,
     dest=pygame.Rect(0, 0, configs.ui.screen_width, configs.ui.screen_height),
@@ -84,9 +95,11 @@ screen.blit(
 
 # Create the UI manager
 
+
 ui_manager = pygame_gui.UIManager((screen.get_width(), screen.get_height()))
 
 # https://pygame-gui.readthedocs.io/en/latest/theme_reference
+
 
 ui_manager.get_theme().load_theme(
     PackageResource("assets.themes", "despair_theme.json")
@@ -105,6 +118,7 @@ ui_manager.preload_fonts(
 )
 # Define the sizes
 
+
 room_preview_height = screen.get_height() * configs.ui.topleft_preview_percentage
 room_preview_width = screen.get_width() * configs.ui.left_panel_percentage
 
@@ -120,6 +134,7 @@ events_history_height = screen.get_height() * (
 events_history_width = screen.get_width() * configs.ui.left_panel_percentage
 
 # Initialize game areas
+
 
 encounter_preview = EncounterPreview(
     pygame.Rect(0, 0, room_preview_width, room_preview_height), ui_manager
@@ -144,12 +159,14 @@ action_window = ActionWindow(
 
 # Hide game areas on launch
 
+
 level_preview.hide()
 encounter_preview.hide()
 action_window.hide()
 events_history.hide()
 
 # Game over window
+
 
 game_over_window = GameOver(
     rect=pygame.Rect(
@@ -165,16 +182,19 @@ game_over_window.hide()
 # Set players
 # TODO: Should be configurable
 
+
 heroes_player = AIPlayer()
 enemies_player = HumanPlayer()
 
 # Create game engine
+
 
 game_engine: GameEngine = GameEngine(
     heroes_player=heroes_player, enemies_player=enemies_player
 )
 
 # Level selection dialog
+
 
 file_dlg = pygame_gui.windows.ui_file_dialog.UIFileDialog(
     rect=pygame.Rect(
@@ -193,6 +213,7 @@ file_dlg = pygame_gui.windows.ui_file_dialog.UIFileDialog(
 file_dlg.show()
 
 # Exit game dialog
+
 
 exit_dlg = None
 
@@ -216,16 +237,20 @@ def get_exit_dlg():
 
 # Define a clock to control the frame rate
 
+
 clock = pygame.time.Clock()
 # Main loop
+
 
 running = True
 
 # Messages for the events history
 
+
 messages = []
 
 # Context manager for the LLM player
+
 
 cntxt_mngr = ContextManager()
 

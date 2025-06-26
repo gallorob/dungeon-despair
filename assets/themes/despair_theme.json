@@ -71,6 +71,8 @@
       "text_shadow": "#111111"
     },
     "font": {
+      "name": "noto_sans",
+      "style": "regular",
       "size": 20
     },
     "misc": {
