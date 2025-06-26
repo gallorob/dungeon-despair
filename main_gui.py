@@ -1,7 +1,7 @@
 import copy
 import os.path
 from enum import auto, Enum
-from typing import Optional, Union
+from typing import Optional
 
 import pygame
 import pygame_gui

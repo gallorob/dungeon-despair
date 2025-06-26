@@ -1,13 +1,14 @@
+import base64
 import json
 import os
-from typing import Any, Dict, Optional
-import requests
-from requests import Response
-from requests.exceptions import ConnectionError
-import base64
 from hashlib import sha224
+from typing import Any, Dict, Optional
+
+import requests
 
 from configs import configs
+from requests import Response
+from requests.exceptions import ConnectionError
 
 
 def check_server_connection() -> bool:
