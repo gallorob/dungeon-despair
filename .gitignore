@@ -9,3 +9,4 @@ update_existing_scenario.py
 assets/models
 build/
 dist/
+configs.yml

@@ -1,7 +1,9 @@
+import json
 import os
 from typing import Any, Dict, Optional
 import requests
 from requests import Response
+from requests.exceptions import ConnectionError
 import base64
 from hashlib import sha224
 
@@ -9,7 +11,7 @@ from configs import configs
 
 
 def check_server_connection() -> bool:
-    server_url = f"http://{configs.server_ip}:{configs.server_port}"
+    server_url = configs.server_url
     try:
         response = requests.get(f"{server_url}/ollama_list_models")
         if response.status_code == 200:
@@ -20,13 +22,15 @@ def check_server_connection() -> bool:
 
 
 def send_to_server(data: Optional[Dict[str, Any]], endpoint) -> Response:
-    server_url = f"http://{configs.server_ip}:{configs.server_port}"
+    server_url = configs.server_url
     if data:
         uid = sha224(configs.username.encode("utf-8")).hexdigest()
         payload = {"uid": uid, **data}
         response = requests.post(f"{server_url}/{endpoint}", json=payload)
     else:
         response = requests.get(f"{server_url}/{endpoint}")
+    if response.status_code != 200:
+        raise ConnectionError(json.loads(response.text)["message"])
     return response.json()
 
 
